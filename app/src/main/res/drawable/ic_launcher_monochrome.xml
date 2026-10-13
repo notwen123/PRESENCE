@@ -1,4 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed icon: the portrait's crest, mask and beak as a single-colour silhouette. -->
-<inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/icon_art_mono" android:inset="16dp" />
+<inset android:drawable="@drawable/icon_fg_mono" android:inset="0.0dip"
+  xmlns:android="http://schemas.android.com/apk/res/android" />

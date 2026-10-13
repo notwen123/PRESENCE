@@ -3,6 +3,7 @@ package com.presence.ui.components
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,7 +46,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -64,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.presence.ui.theme.BrandColors
 import com.presence.ui.theme.LocalReducedMotion
+import com.presence.ui.theme.Manrope
 import com.presence.ui.theme.Motion
 import com.presence.ui.theme.SemanticColors
 import com.presence.ui.theme.Shapes
@@ -100,49 +105,53 @@ fun TopBar(title: String = "FACEDOWN", onBack: (() -> Unit)? = null, trailing: @
         trailing()
     }
 
-/** Pressed state: a slight settle, skipped when the user asked for reduced motion. */
+/**
+ * The 3D button: a face on a darker lip. Pressing pushes the face down onto the lip, so a tap feels like a
+ * real key. Reduced motion: the face still moves (it is feedback, not decoration) but without easing.
+ */
 @Composable
-private fun pressScale(source: MutableInteractionSource): Float {
+private fun ChunkyButton(face: Color, lip: Color, border: Color?, enabled: Boolean, modifier: Modifier,
+                         onClick: () -> Unit, content: @Composable RowScope.() -> Unit) {
+    val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val reduced = LocalReducedMotion.current
-    return animateFloatAsState(if (pressed && !reduced) 0.98f else 1f, tween(Motion.micro), label = "press").value
+    val depth = 4.dp
+    val drop by animateDpAsState(if (pressed && enabled) depth else 0.dp, tween(if (reduced) 0 else Motion.micro), label = "press")
+    Box(modifier.fillMaxWidth()
+        .clickable(source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
+        .drawBehind {
+            drawRoundRect(lip, topLeft = Offset(0f, depth.toPx()), size = Size(size.width, size.height - depth.toPx()),
+                cornerRadius = CornerRadius(16.dp.toPx()))
+        }
+        .padding(bottom = depth)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).offset(y = drop).background(face, Shapes.standard)
+            .then(if (border != null) Modifier.border(2.dp, border, Shapes.standard) else Modifier)
+            .padding(horizontal = Spacing.standard), horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically, content = content)
+    }
 }
 
 @Composable
 fun PrimaryButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, loading: Boolean = false,
                   onClick: () -> Unit) {
-    val source = remember { MutableInteractionSource() }
-    Button(
-        onClick = onClick,
-        enabled = enabled && !loading,
-        interactionSource = source,
-        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp).scale(pressScale(source)),
-        shape = Shapes.standard,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = BrandColors.Green, contentColor = BrandColors.White,
-            disabledContainerColor = SemanticColors.Subtle,
-            disabledContentColor = if (loading) SemanticColors.PrimaryText else SemanticColors.TertiaryText),
-        elevation = null,
-    ) {
+    val on = enabled && !loading
+    ChunkyButton(if (on) BrandColors.Green else SemanticColors.Subtle, if (on) BrandColors.GreenDeep else SemanticColors.Divider,
+        null, on, modifier, onClick) {
         if (loading) {
             CircularProgressIndicator(Modifier.size(16.dp), color = SemanticColors.PrimaryText, strokeWidth = 2.dp)
             Spacer(Modifier.width(Spacing.related))
         }
-        Text(text, style = MaterialTheme.typography.labelLarge)
+        Text(text, style = MaterialTheme.typography.labelLarge.copy(fontFamily = Manrope, fontWeight = FontWeight.ExtraBold),
+            color = when { on -> BrandColors.White; loading -> SemanticColors.PrimaryText; else -> SemanticColors.TertiaryText })
     }
 }
 
 @Composable
-fun SecondaryButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val source = remember { MutableInteractionSource() }
-    OutlinedButton(
-        onClick = onClick,
-        interactionSource = source,
-        modifier = modifier.fillMaxWidth().heightIn(min = 52.dp).scale(pressScale(source)),
-        shape = Shapes.standard,
-        border = BorderStroke(1.dp, SemanticColors.Border),
-    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = SemanticColors.PrimaryText) }
-}
+fun SecondaryButton(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) =
+    ChunkyButton(BrandColors.White, SemanticColors.Border, SemanticColors.Border, true, modifier, onClick) {
+        Text(text, style = MaterialTheme.typography.labelLarge.copy(fontFamily = Manrope, fontWeight = FontWeight.ExtraBold),
+            color = SemanticColors.PrimaryText)
+    }
 
 @Composable
 fun TextAction(text: String, modifier: Modifier = Modifier, onClick: () -> Unit) =
@@ -267,25 +276,40 @@ fun ProgressRing(progress: Float, modifier: Modifier = Modifier, color: Color = 
         drawArc(color, -90f, 360f * progress, false, style = stroke)
     }
 
-enum class Tab(val label: String) { Today("Today"), Progress("Progress"), Profile("Profile") }
+enum class Tab(val label: String) { Today("Today"), Focus("Focus"), Squad("Squad"), Progress("Progress"), Profile("Profile") }
 
 @Composable
 fun ClockInBottomNavigation(selected: Tab, onSelect: (Tab) -> Unit) = Column(
     Modifier.fillMaxWidth().background(SemanticColors.Canvas).navigationBarsPadding()
 ) {
     Hairline()
-    Row(Modifier.fillMaxWidth().height(64.dp).selectableGroup()) {
-        Tab.entries.forEach { t ->
-            val on = t == selected
-            val color = if (on) BrandColors.Green else SemanticColors.SecondaryText
-            Column(
-                Modifier.weight(1f).fillMaxSize().selectable(on, role = Role.Tab) { onSelect(t) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Canvas(Modifier.size(24.dp)) { tabIcon(t, color) }
-                Gap(4)
-                Text(t.label, style = MaterialTheme.typography.labelMedium, color = color)
+    val reduced = LocalReducedMotion.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().height(68.dp)) {
+        // One indicator that travels between tabs, so the bar shows where you came from and where you are.
+        val item = maxWidth / Tab.entries.size
+        val pill = 60.dp
+        val x by androidx.compose.animation.core.animateDpAsState(item * selected.ordinal + (item - pill) / 2,
+            tween(if (reduced) 0 else Motion.screen, easing = Motion.Standard), label = "indicator")
+        Box(Modifier.padding(start = x, top = 8.dp).size(pill, 32.dp).background(SemanticColors.SuccessTint, Shapes.pill))
+        Row(Modifier.fillMaxSize().selectableGroup()) {
+            Tab.entries.forEach { t ->
+                val on = t == selected
+                val color by animateColorAsState(if (on) BrandColors.Green else SemanticColors.SecondaryText,
+                    tween(Motion.control), label = "tab")
+                Column(
+                    Modifier.weight(1f).fillMaxSize().selectable(on, role = Role.Tab) {
+                        if (!on) com.presence.ui.theme.Haptics.tick(view)
+                        onSelect(t)
+                    }.padding(top = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Canvas(Modifier.size(24.dp)) { tabIcon(t, color) }
+                    Gap(8)
+                    Text(t.label, style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = if (on) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Medium),
+                        color = color)
+                }
             }
         }
     }
@@ -301,6 +325,17 @@ private fun DrawScope.tabIcon(t: Tab, color: Color) {
             drawCircle(color, 9f * s, p(12f, 12f), style = Stroke(w))
             drawLine(color, p(12f, 12f), p(12f, 7f), w, StrokeCap.Round)
             drawLine(color, p(12f, 12f), p(15.5f, 13.5f), w, StrokeCap.Round)
+        }
+        Tab.Focus -> { // a phone face-down: a rounded slab with a small crest notch
+            drawRoundRect(color, p(6f, 4f), Size(12f * s, 16f * s), androidx.compose.ui.geometry.CornerRadius(3f * s), style = Stroke(w))
+            drawLine(color, p(12f, 20f), p(12f, 20.5f), w, StrokeCap.Round)
+            drawLine(color, p(9f, 22f), p(15f, 22f), w, StrokeCap.Round)
+        }
+        Tab.Squad -> { // two heads, one in front
+            drawCircle(color, 3f * s, p(9f, 9f), style = Stroke(w))
+            drawCircle(color, 2.6f * s, p(16.5f, 9.5f), style = Stroke(w))
+            drawArc(color, 200f, 140f, false, p(3f, 14f), Size(12f * s, 11f * s), style = Stroke(w, cap = StrokeCap.Round))
+            drawArc(color, 220f, 100f, false, p(12f, 14.5f), Size(9f * s, 9f * s), style = Stroke(w, cap = StrokeCap.Round))
         }
         Tab.Progress -> { // a timeline of three points
             drawLine(color, p(7f, 5f), p(7f, 19f), w, StrokeCap.Round)

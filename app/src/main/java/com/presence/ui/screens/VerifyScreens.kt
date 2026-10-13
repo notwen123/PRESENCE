@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,10 @@ import com.presence.session.CheckStatus
 import com.presence.session.Screen
 import com.presence.session.reasonMessage
 import com.presence.ui.components.Gap
+import com.presence.ui.components.AttestationSeal
+import com.presence.ui.components.MilestoneFlight
+import com.presence.ui.components.SealState
+import com.presence.ui.components.isMilestone
 import com.presence.ui.components.Group
 import com.presence.ui.components.Hairline
 import com.presence.ui.components.KeyValue
@@ -57,6 +62,7 @@ import com.presence.ui.components.Page
 import com.presence.ui.components.Pip
 import com.presence.ui.components.PipMood
 import com.presence.ui.components.PrimaryButton
+import com.presence.ui.components.SessionComplete
 import com.presence.ui.components.SecondaryButton
 import com.presence.ui.components.SectionLabel
 import com.presence.ui.components.StatusLabel
@@ -65,6 +71,7 @@ import com.presence.ui.components.TopBar
 import com.presence.ui.components.formatToken
 import com.presence.ui.components.minutesLabel
 import com.presence.ui.theme.BrandColors
+import com.presence.ui.theme.LocalReducedMotion
 import com.presence.ui.theme.Motion
 import com.presence.ui.theme.SemanticColors
 import com.presence.ui.theme.Shapes
@@ -76,7 +83,7 @@ import com.presence.ui.theme.Spacing
 fun VerifyingScreen(v: Screen.Verifying) = Page {
     TopBar()
     Gap(8)
-    Pip(PipMood.Thinking, 120.dp, live = true)
+    Pip(PipMood.Scientist, 120.dp, entrance = true)
     Gap(16)
     Text("Checking your session", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
     Gap(8)
@@ -134,20 +141,52 @@ private fun CheckMark(color: Color, size: androidx.compose.ui.unit.Dp) =
 // ---------- Trust receipt ----------
 
 @Composable
-fun ReceiptScreen(r: Screen.Result, onDone: () -> Unit) = Page {
+fun ReceiptScreen(r: Screen.Result, history: List<com.presence.attest.HistoryItem>, onDone: () -> Unit) = Box {
     val rc: Receipt = r.receipt
     val s = rc.settlement
     val ctx = LocalContext.current
     val uri = LocalUriHandler.current
+    val reduced = LocalReducedMotion.current
     var showEvidence by rememberSaveable { mutableStateOf(false) }
     val anchored = s.status == "CONFIRMED"
+    val paid = anchored && s.rewardToken > 0
     val symbol = s.rewardSymbol
+    // The seal closes first (the server verified this session), then Pip celebrates once.
+    val prefs = remember { ctx.getSharedPreferences("presence", android.content.Context.MODE_PRIVATE) }
+    // Mode B: the streak moment comes first, once per verified session; the trust receipt follows.
+    var complete by remember { mutableStateOf(prefs.getString("complete_seen", null) != rc.sessionId) }
+    var sealed by remember { mutableStateOf(reduced) }
+    LaunchedEffect(complete) { if (!reduced && !complete) { kotlinx.coroutines.delay(Motion.seal.toLong()); sealed = true } }
+    // Mode C: a milestone gets its Flight once per milestone, never on an ordinary day.
+    var flight by remember {
+        mutableStateOf(isMilestone(rc.streak) && prefs.getInt("milestone_celebrated", 0) != rc.streak)
+    }
+    if (complete) {
+        SessionComplete(rc.streak, history, reward = when {
+            rc.reward.stake > 0 && paid -> "Stake returned · ${formatToken(rc.reward.stake)} $symbol"
+            paid -> "+${formatToken(s.rewardToken)} $symbol"
+            else -> null
+        }) {
+            val c = java.util.Calendar.getInstance() // today's feather has arrived here; Today won't replay it
+            prefs.edit().putString("complete_seen", rc.sessionId)
+                .putInt("feather_seen_day", c.get(java.util.Calendar.YEAR) * 1000 + c.get(java.util.Calendar.DAY_OF_YEAR)).apply()
+            complete = false
+        }
+        return@Box
+    }
 
+    Page {
     TopBar { if (rc.mode == "development") StatusLabel("Development · ${s.network ?: "local"}") }
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
         Gap(16)
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Pip(PipMood.Proud, 176.dp, entrance = true, live = true) // once, only because the server returned a verified receipt
+            // The seal is a badge on Pip: it closes and draws its check first, then Pip celebrates once.
+            Box(Modifier.size(176.dp)) {
+                if (sealed) Pip(PipMood.Champion, 156.dp, Modifier.align(Alignment.TopCenter), entrance = true)
+                else Pip(PipMood.Verified, 156.dp, Modifier.align(Alignment.TopCenter))
+                Box(Modifier.align(Alignment.BottomEnd).size(64.dp).background(BrandColors.White, CircleShape)
+                    .padding(6.dp)) { AttestationSeal(SealState.Verified, 52.dp) }
+            }
             Gap(16)
             Text("You kept your commitment.", style = MaterialTheme.typography.headlineLarge,
                 color = SemanticColors.PrimaryText, textAlign = TextAlign.Center)
@@ -155,31 +194,31 @@ fun ReceiptScreen(r: Screen.Result, onDone: () -> Unit) = Page {
             Text("${minutesLabel(rc.durationSeconds.toInt())} · ${rc.missionName}",
                 style = MaterialTheme.typography.bodyLarge, color = SemanticColors.SecondaryText)
         }
-        Gap(32)
+        Gap(24)
+        SectionLabel("Trust receipt")
+        Gap(8)
+        // Each step shows only what actually happened; nothing is marked done ahead of the chain.
         Group {
-            KeyValue("Session", "Verified", BrandColors.Green)
+            ReceiptStep("Session submitted", "Done", done = true)
             Hairline()
+            ReceiptStep("Evidence verified", "Verified by the server", done = true)
             Physical("Human touch", rc.checks["human_touch"])
             Physical("Phone stayed down", rc.checks["phone_down"])
-            KeyValue("Recorded on Monad", when (s.status) {
-                "CONFIRMED" -> "Confirmed · ${s.network}"
+            ReceiptStep("Recorded on Monad", when (s.status) {
+                "CONFIRMED" -> "Confirmed"
                 "NOT_CONFIGURED" -> "Not configured"
+                "PENDING" -> "Pending"
                 else -> "Failed"
-            }, if (anchored) BrandColors.Green else SemanticColors.PrimaryText, icon = R.drawable.solana_mark)
-            if (rc.reward.stake > 0) {
-                Hairline()
-                KeyValue("Your stake", if (anchored && s.rewardToken > 0) "${formatToken(rc.reward.stake)} $symbol returned"
-                    else "Not returned yet")
-                if (anchored && rc.reward.bonus > 0) {
-                    Hairline()
-                    KeyValue("Bonus from the pool", "+${formatToken(rc.reward.bonus)} $symbol")
-                }
-            } else if (anchored && s.rewardToken > 0) {
-                Hairline()
-                KeyValue("Sponsor reward", "+${formatToken(s.rewardToken)} $symbol", BrandColors.Green)
-            }
+            }, done = anchored, icon = R.drawable.solana_mark)
             Hairline()
-            KeyValue("Streak", if (rc.streak == 1) "1 day" else "${rc.streak} days")
+            ReceiptStep(if (rc.reward.stake > 0) "Stake returned" else "Reward paid", when {
+                rc.reward.stake > 0 && paid -> "${formatToken(rc.reward.stake)} $symbol" +
+                    if (rc.reward.bonus > 0) " + ${formatToken(rc.reward.bonus)} bonus" else ""
+                rc.reward.stake > 0 -> "Not returned yet"
+                paid -> "+${formatToken(s.rewardToken)} $symbol"
+                rc.reward.token > 0 || rc.reward.funding == "UNFUNDED" -> "Not paid (sponsor pool empty)"
+                else -> "No token reward in this mode"
+            }, done = paid)
         }
         if (!anchored && s.detail != null) {
             Gap(8)
@@ -216,7 +255,16 @@ fun ReceiptScreen(r: Screen.Result, onDone: () -> Unit) = Page {
     }
     PrimaryButton("Done", onClick = onDone)
     Gap(16)
+    }
+    if (flight) MilestoneFlight(rc.streak, onDone = {
+        prefs.edit().putInt("milestone_celebrated", rc.streak).apply(); flight = false
+    }, onShare = { shareReceipt(ctx, rc) })
 }
+
+/** A receipt step: green check only when it really happened. */
+@Composable
+private fun ReceiptStep(label: String, value: String, done: Boolean, icon: Int? = null) =
+    KeyValue(label, (if (done) "✓  " else "") + value, if (done) BrandColors.Green else SemanticColors.PrimaryText, icon = icon)
 
 /** One physical-evidence row; hidden when the mission doesn't require it. */
 @Composable
@@ -281,7 +329,7 @@ fun FailedScreen(f: Screen.Failed, onRetry: () -> Unit, onHome: () -> Unit) = Pa
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
         Gap(32)
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Pip(PipMood.Retry, 160.dp, live = true)
+            Pip(PipMood.Encouraging, 160.dp, entrance = true)
             Gap(16)
             Text("Session not verified", style = MaterialTheme.typography.headlineLarge,
                 color = SemanticColors.PrimaryText, textAlign = TextAlign.Center)

@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.style.TextAlign
 import com.presence.BuildConfig
 import com.presence.R
 import com.presence.attest.HistoryItem
@@ -52,6 +54,12 @@ import com.presence.ui.components.MessageState
 import com.presence.ui.components.Pip
 import com.presence.ui.components.PipMood
 import com.presence.ui.components.PrimaryButton
+import com.presence.ui.components.PipSays
+import com.presence.ui.components.FlameCount
+import com.presence.ui.components.feather
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
+import com.presence.ui.components.StreakFlame
 import com.presence.ui.components.SecondaryButton
 import com.presence.ui.components.SectionLabel
 import com.presence.ui.components.Tab
@@ -73,6 +81,27 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.semantics.Role
 import com.presence.urge.Urges
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.height
+import com.presence.ui.components.FeatherTrail
+import com.presence.ui.components.MILESTONES
+import com.presence.ui.components.MilestoneFlight
+import com.presence.ui.components.StreakHero
+import com.presence.ui.components.FeatherWeek
+import com.presence.ui.components.MilestoneJourney
+import com.presence.ui.components.DayState
+import com.presence.ui.components.weekOf
+import com.presence.ui.components.nextMilestone
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import com.presence.ui.theme.Haptics
+import androidx.compose.ui.unit.sp
+import com.presence.ui.theme.LocalReducedMotion
+import com.presence.ui.theme.MotionSettings
 import androidx.compose.material3.OutlinedTextField
 import com.presence.PresenceMinutes
 import com.presence.ui.components.ProgressRing
@@ -104,17 +133,26 @@ fun HomeScreen(
     var tab by rememberSaveable { mutableStateOf(Tab.Today) }
     var shown by remember { mutableStateOf(false) }
     LaunchedEffect(tab) { if (shown) onRetry() else shown = true } // fresh squad, pools and live count per tab
+    val reduced = LocalReducedMotion.current
     Column(Modifier.fillMaxSize().background(SemanticColors.Canvas)) {
-        AnimatedContent(tab, Modifier.weight(1f), label = "tab",
-            transitionSpec = { fadeIn(tween(Motion.screen)) togetherWith fadeOut(tween(Motion.micro)) }) { t ->
+        // Tabs slide in the direction you moved along the bar; a short crossfade under reduced motion.
+        AnimatedContent(tab, Modifier.weight(1f), label = "tab", transitionSpec = {
+            if (reduced) fadeIn(tween(Motion.micro)) togetherWith fadeOut(tween(Motion.micro))
+            else {
+                val dir = if (targetState.ordinal > initialState.ordinal) 1 else -1
+                (slideInHorizontally(tween(Motion.screen, easing = Motion.Standard)) { it / 12 * dir } + fadeIn(tween(Motion.screen))) togetherWith
+                    (slideOutHorizontally(tween(Motion.micro, easing = Motion.Exit)) { -it / 12 * dir } + fadeOut(tween(Motion.micro)))
+            }
+        }) { t ->
             Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = Spacing.gutter)) {
                 TopBar {
                     EnvironmentLabel(s.health?.mode, s.health?.network)
                 }
                 when (t) {
-                    Tab.Today -> Today(s, onConnect, onSelect, onOpen, onRetry)
-                    Tab.Progress -> Progress(s, onConnect = { tab = Tab.Profile }, onBuyFreeze = onBuyFreeze,
-                        onCreateSquad = onCreateSquad, onJoinSquad = onJoinSquad)
+                    Tab.Today -> Today(s, onConnect, onOpen, onRetry, goFocus = { tab = Tab.Focus }, goSquad = { tab = Tab.Squad })
+                    Tab.Focus -> Focus(s, onConnect, onSelect, onOpen, onRetry)
+                    Tab.Squad -> SquadTab(s, onCreateSquad, onJoinSquad, goProfile = { tab = Tab.Profile })
+                    Tab.Progress -> Progress(s, onConnect = { tab = Tab.Profile }, onBuyFreeze = onBuyFreeze)
                     Tab.Profile -> ProfileTab(s, onConnect, onDisconnect, onRetry, onCalibrate)
                 }
             }
@@ -123,101 +161,312 @@ fun HomeScreen(
     }
 }
 
+/** The last seven local days, oldest first: true where a session was verified (from the server's own receipts). */
+private fun keptDays(history: List<HistoryItem>): List<Boolean> {
+    val cal = java.util.Calendar.getInstance()
+    fun key(ms: Long) = cal.apply { timeInMillis = ms }.let { it.get(java.util.Calendar.YEAR) * 1000 + it.get(java.util.Calendar.DAY_OF_YEAR) }
+    val kept = history.filter { it.state == "SETTLED" || it.state == "VERIFIED" }
+        .mapNotNull { h -> h.startedAt?.let { key((it * 1000).toLong()) } }.toSet()
+    val now = System.currentTimeMillis()
+    return (6 downTo 0).map { d -> key(now - d * 86_400_000L) in kept }
+}
+
+/**
+ * Today's feather arrives once: the first time Today is shown after today's first verified session.
+ * Remembered per day, so it never replays on every visit.
+ */
+@Composable
+private fun arrivingToday(days: List<Boolean>): Pair<Int?, () -> Unit> {
+    val ctx = LocalContext.current
+    val prefs = remember { ctx.getSharedPreferences("presence", android.content.Context.MODE_PRIVATE) }
+    val today = remember { java.util.Calendar.getInstance().let { it.get(java.util.Calendar.YEAR) * 1000 + it.get(java.util.Calendar.DAY_OF_YEAR) } }
+    val pending = days.lastOrNull() == true && prefs.getInt("feather_seen_day", -1) != today
+    return (if (pending) 6 else null) to { prefs.edit().putInt("feather_seen_day", today).apply() }
+}
+
 // ---------- Today ----------
 
 @Composable
 private fun androidx.compose.foundation.layout.ColumnScope.Today(
+    s: UiState, onConnect: () -> Unit, onOpen: (MissionPolicy) -> Unit, onRetry: () -> Unit,
+    goFocus: () -> Unit, goSquad: () -> Unit,
+) {
+    val m = s.mission
+    val p = s.profile
+    Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+        SectionLabel(greeting())
+        Gap(8)
+        // Pip says where today stands; the pose follows the real state.
+        val streak = p?.streak ?: 0
+        if (s.backendError == null && m != null) PipSays(when {
+            p?.provedToday == true -> PipMood.Champion; streak > 0 -> PipMood.Coach; else -> PipMood.Ready
+        }, when {
+            p?.provedToday == true -> "Nicely done today! Your flame is lit."
+            streak > 0 -> "Your $streak-day streak needs today. Put the phone down with me!"
+            else -> "Put it down. Prove it. I'll keep count."
+        }, pipSize = 104.dp)
+        else Text("Put it down.\nProve it.", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
+        if (s.backendError != null) {
+            Gap(24)
+            MessageState(PipMood.Mechanic, "Can't connect right now", s.backendError, action = "Try again", onAction = onRetry)
+            return@Column
+        }
+        if (m == null) { Gap(16); SkeletonCard(); Gap(12); SkeletonCard(); return@Column }
+        Gap(16)
+        // Mode 1: compact streak with the feather week. Today's feather arrives once, after a real verified session.
+        if (p != null) {
+            val (arriving, onArrived) = arrivingToday(keptDays(s.history))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FlameCount(p.streak, lit = p.provedToday)
+                Spacer(Modifier.size(Spacing.related))
+                Column {
+                    Text("day streak", style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText)
+                    Text(nextMilestone(p.streak)?.let { "${it - p.streak} to the $it-day milestone" } ?: "Every milestone reached",
+                        style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText)
+                }
+            }
+            Gap(12)
+            FeatherWeek(weekOf(s.history), arrivingToday = arriving != null, onArrived = onArrived)
+            Gap(20)
+        }
+        CommitmentCard(m, s, onConnect, onOpen, goFocus)
+        Gap(16)
+        PresenceRing()
+        s.squad?.let { sq ->
+            Gap(12)
+            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).border(1.dp, SemanticColors.Border, Shapes.standard)
+                .clickable(onClick = goSquad).padding(horizontal = Spacing.standard, vertical = Spacing.related),
+                verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(sq.name, style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText)
+                    Text("${sq.doneToday} of ${sq.size} done today · squad streak ${sq.streak}",
+                        style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
+                }
+                Text("Squad  ›", style = MaterialTheme.typography.labelLarge, color = SemanticColors.PrimaryText)
+            }
+        }
+        if (s.facedownNow > 0) { Gap(16); LiveLine(s.facedownNow) }
+        Gap(24)
+    }
+}
+
+/**
+ * Today's one dominant element: the next commitment in near-black with the primary action inside it.
+ * The terms are summarized; Focus holds the full detail.
+ */
+@Composable
+private fun CommitmentCard(m: MissionPolicy, s: UiState, onConnect: () -> Unit, onOpen: (MissionPolicy) -> Unit, goFocus: () -> Unit) {
+    val mode = when { m.stake.noLoss -> "No-Loss"; staked(m) -> "Stake ${formatToken(m.stake.token)} ${m.reward.symbol}"; else -> "Free" }
+    val reward = when {
+        m.stake.noLoss -> "Stake back +${formatToken(m.reward.token)} ${m.reward.symbol} when you finish"
+        staked(m) -> "Stake back + up to ${(m.stake.bonusRate * 100).toInt()}% when you finish"
+        m.reward.token > 0 -> "+${formatToken(m.reward.token)} ${m.reward.symbol} from a sponsor when you finish"
+        else -> "A verified session when you finish"
+    }
+    val used = s.profile?.claimsToday?.get(m.missionId) ?: 0
+    Column(Modifier.fillMaxWidth().background(BrandColors.Ink, Shapes.large).padding(Spacing.section)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("NEXT COMMITMENT", style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 1.2.sp),
+                color = BrandColors.White.copy(alpha = 0.6f))
+            Spacer(Modifier.weight(1f))
+            Text("Change", style = MaterialTheme.typography.labelLarge, color = BrandColors.White,
+                modifier = Modifier.clickable(onClick = goFocus).padding(4.dp))
+        }
+        Gap(8)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(minutesLabel(m.durationSeconds), style = MaterialTheme.typography.displayMedium, color = BrandColors.White)
+            Spacer(Modifier.size(Spacing.related))
+            Text(mode, style = MaterialTheme.typography.titleMedium, color = BrandColors.White.copy(alpha = 0.72f),
+                modifier = Modifier.padding(bottom = 8.dp))
+        }
+        Text(reward, style = MaterialTheme.typography.bodyMedium, color = BrandColors.White.copy(alpha = 0.8f))
+        Gap(20)
+        when {
+            s.wallet == null -> PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
+            used >= m.maxClaimsPerDay -> Text("✓  Done for today. Pick another length on Focus.",
+                style = MaterialTheme.typography.titleMedium, color = BrandColors.White)
+            else -> PrimaryButton("Go facedown  →", enabled = !s.busy) { onOpen(m) }
+        }
+    }
+}
+
+/** One dominant action, shared by Today and Focus. */
+@Composable
+private fun CommitAction(s: UiState, m: MissionPolicy?, onConnect: () -> Unit, onOpen: (MissionPolicy) -> Unit) {
+    if (m == null || s.backendError != null) return
+    val used = s.profile?.claimsToday?.get(m.missionId) ?: 0
+    when {
+        s.wallet == null -> {
+            PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
+            Text("Uses MetaMask on Monad testnet. FACEDOWN never sees your keys.",
+                style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText,
+                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.related))
+        }
+        used >= m.maxClaimsPerDay -> {
+            Text("✓  ${minutesLabel(m.durationSeconds)} is done for today. Pick another length to go again.",
+                style = MaterialTheme.typography.bodyMedium, color = SemanticColors.Success,
+                modifier = Modifier.fillMaxWidth().background(SemanticColors.SuccessTint, Shapes.standard).padding(Spacing.standard))
+            Gap(16)
+        }
+        else -> { PrimaryButton("Go facedown  →", enabled = !s.busy) { onOpen(m) }; Gap(16) }
+    }
+}
+
+/** Today's compact summary of the selected commitment; the details live on Focus. */
+@Composable
+private fun NextCommitment(m: MissionPolicy, s: UiState, goFocus: () -> Unit) {
+    val mode = when { m.stake.noLoss -> "No-Loss"; staked(m) -> "Stake ${formatToken(m.stake.token)} ${m.reward.symbol}"; else -> "Free" }
+    val reward = when {
+        m.stake.noLoss -> "Stake back +${formatToken(m.reward.token)} ${m.reward.symbol}"
+        staked(m) -> "Stake back + up to ${(m.stake.bonusRate * 100).toInt()}%"
+        m.reward.token > 0 -> "+${formatToken(m.reward.token)} ${m.reward.symbol} from a sponsor"
+        else -> "A verified session"
+    }
+    Column(Modifier.fillMaxWidth().background(SemanticColors.Subtle, Shapes.large).clickable(onClick = goFocus)
+        .padding(Spacing.standard)) {
+        SectionLabel("Next commitment")
+        Gap(6)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text(minutesLabel(m.durationSeconds), style = MaterialTheme.typography.displayMedium, color = SemanticColors.PrimaryText)
+            Spacer(Modifier.size(Spacing.related))
+            Text(mode, style = MaterialTheme.typography.titleMedium, color = SemanticColors.SecondaryText,
+                modifier = Modifier.padding(bottom = 8.dp))
+        }
+        Text(reward, style = MaterialTheme.typography.bodyMedium, color = BrandColors.Green)
+        Gap(4)
+        Text("Change length or mode  ›", style = MaterialTheme.typography.labelMedium, color = SemanticColors.TertiaryText)
+    }
+}
+
+@Composable
+private fun LiveLine(n: Int) = Row(verticalAlignment = Alignment.CenterVertically) {
+    Box(Modifier.size(8.dp).background(BrandColors.Green, CircleShape))
+    Spacer(Modifier.size(Spacing.related))
+    Text(if (n == 1) "1 person is facedown right now" else "$n people are facedown right now",
+        style = MaterialTheme.typography.labelMedium, color = SemanticColors.PrimaryText)
+}
+
+/** Loading placeholder: shape, not numbers. Nothing pretends to be data. */
+@Composable
+private fun SkeletonCard() = Box(Modifier.fillMaxWidth().height(96.dp).background(SemanticColors.Subtle, Shapes.large)
+    .semantics { contentDescription = "Loading" })
+
+// ---------- Focus ----------
+
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.Focus(
     s: UiState, onConnect: () -> Unit, onSelect: (MissionPolicy) -> Unit, onOpen: (MissionPolicy) -> Unit,
     onRetry: () -> Unit,
 ) {
     val m = s.mission
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+        Gap(8)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                SectionLabel(greeting())
+                Text("Focus", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
                 Gap(4)
-                Text("Put it down. Prove it.", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
+                Text("Pick a length and what's at stake. Every term is shown before your wallet opens.",
+                    style = MaterialTheme.typography.bodyLarge, color = SemanticColors.SecondaryText)
             }
-            if (s.backendError == null && m != null)
-                Pip(if (s.profile?.provedToday == true) PipMood.Proud else PipMood.Ready, 128.dp, entrance = true, live = true)
+            Pip(PipMood.Coach, 88.dp, entrance = true)
         }
-        Text("Phone face-down for a set time. Finish, and a real, human session is verified on Monad.",
-            style = MaterialTheme.typography.bodyLarge, color = SemanticColors.SecondaryText)
-        if (s.facedownNow > 0) {
-            Gap(12)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).background(BrandColors.Green, CircleShape))
-                Spacer(Modifier.size(Spacing.related))
-                Text(if (s.facedownNow == 1) "1 person is facedown right now" else "${s.facedownNow} people are facedown right now",
-                    style = MaterialTheme.typography.labelMedium, color = SemanticColors.PrimaryText)
-            }
-        }
-
-        Gap(20)
-        PresenceRing()
-        s.profile?.takeIf { it.streak > 0 }?.let {
-            Gap(24)
-            StreakLine(it)
-        }
-
         if (s.backendError != null) {
-            Gap(48)
-            MessageState(PipMood.Retry, "Can't connect right now", s.backendError, action = "Try again", onAction = onRetry)
-        } else if (m == null) {
-            Gap(48)
-            MessageState(PipMood.Thinking, "Loading sessions", "One moment.")
-        } else {
             Gap(32)
-            SectionLabel("Your next commitment")
-            Gap(12)
-            // You choose the length and whether to stake (self-selected goals cut phone use 73% more than
-            // assigned ones: Sachdeva et al., Soc Sci Med 2026). Free is the default way in.
-            val durations = s.missions.map { it.durationSeconds }.distinct()
-            if (durations.size > 1) {
-                DurationSelector(durations, m.durationSeconds, label = ::minutesLabel) { d ->
-                    onSelect(s.missions.firstOrNull { it.durationSeconds == d && staked(it) == staked(m) }
-                        ?: s.missions.first { it.durationSeconds == d })
-                }
-                Gap(8)
-            }
-            val variants = s.missions.filter { it.durationSeconds == m.durationSeconds }
-            if (variants.size > 1) {
-                DurationSelector(variants, m, label = {
-                    when {
-                        it.stake.noLoss -> "No-Loss"
-                        staked(it) -> "Stake ${formatToken(it.stake.token)}"
-                        else -> "Free"
-                    }
-                }, onSelect = onSelect)
-                Gap(16)
-            }
-            Commitment(m, s)
-            Gap(16)
-            Appointment()
+            MessageState(PipMood.Mechanic, "Can't connect right now", s.backendError, action = "Try again", onAction = onRetry)
+            return@Column
         }
+        if (m == null) { Gap(24); SkeletonCard(); return@Column }
+        Gap(24)
+        // You choose the length and what's at stake (self-selected goals cut phone use 73% more than
+        // assigned ones: Sachdeva et al., Soc Sci Med 2026). Free is the default way in.
+        SectionLabel("Length")
+        Gap(8)
+        val durations = s.missions.map { it.durationSeconds }.distinct()
+        Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(Spacing.compact)) {
+            durations.forEach { d ->
+                val on = d == m.durationSeconds
+                val view = LocalView.current
+                Column(Modifier.weight(1f).height(76.dp)
+                    .background(if (on) SemanticColors.SuccessTint else SemanticColors.Subtle, Shapes.standard)
+                    .border(if (on) 1.5.dp else 0.dp, if (on) BrandColors.Green else Color.Transparent, Shapes.standard)
+                    .selectable(on, role = Role.RadioButton) {
+                        Haptics.tick(view)
+                        onSelect(s.missions.firstOrNull { it.durationSeconds == d && staked(it) == staked(m) && it.stake.noLoss == m.stake.noLoss }
+                            ?: s.missions.first { it.durationSeconds == d })
+                    },
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Text("${d / 60}", style = MaterialTheme.typography.headlineSmall,
+                        color = if (on) BrandColors.Green else SemanticColors.PrimaryText)
+                    Text("min", style = MaterialTheme.typography.labelMedium, color = SemanticColors.SecondaryText)
+                }
+            }
+        }
+        val variants = s.missions.filter { it.durationSeconds == m.durationSeconds }
+        if (variants.size > 1) {
+            Gap(24)
+            SectionLabel("What's at stake")
+            Gap(8)
+            // Each mode states its own consequence before you choose it.
+            Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(Spacing.compact)) {
+                variants.forEach { v -> ModeCard(v, v == m) { onSelect(v) } }
+            }
+        }
+        Gap(20)
+        Box(Modifier.animateContentSize(tween(Motion.control, easing = Motion.Standard))) {
+            Column { Commitment(m, s) }
+        }
+        Gap(16)
+        Appointment()
         Gap(24)
     }
+    CommitAction(s, m, onConnect, onOpen)
+}
 
-    if (m != null && s.backendError == null) {
-        val used = s.profile?.claimsToday?.get(m.missionId) ?: 0
-        val full = used >= m.maxClaimsPerDay
-        when {
-            s.wallet == null -> {
-                PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
-                Text("Uses MetaMask on Monad testnet. FACEDOWN never sees your keys.",
-                    style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.related))
-            }
-            full -> {
-                PrimaryButton("Done for today", enabled = false) {}
-                Gap(16)
-            }
-            else -> {
-                PrimaryButton("Go facedown  →", enabled = !s.busy) { onOpen(m) }
-                Gap(16)
-            }
+@Composable
+private fun ModeCard(v: MissionPolicy, on: Boolean, onSelect: () -> Unit) {
+    val sym = v.reward.symbol
+    val (title, terms) = when {
+        v.stake.noLoss -> "No-Loss" to "Lock ${formatToken(v.stake.token)} $sym; it always comes back. Finish for +${formatToken(v.reward.token)}."
+        staked(v) -> "Stake ${formatToken(v.stake.token)} $sym" to "Finish: back + up to ${(v.stake.bonusRate * 100).toInt()}%. Quit: locked 7 days, not lost."
+        else -> "Free" to (if (v.reward.token > 0) "Nothing at risk. A sponsor pays +${formatToken(v.reward.token)} $sym." else "Nothing at risk.")
+    }
+    val view = LocalView.current
+    Row(Modifier.fillMaxWidth().heightIn(min = 64.dp)
+        .background(if (on) SemanticColors.SuccessTint else BrandColors.White, Shapes.standard)
+        .border(2.dp, if (on) BrandColors.Green else SemanticColors.Border, Shapes.standard)
+        .selectable(on, role = Role.RadioButton) { Haptics.tick(view); onSelect() }
+        .padding(Spacing.standard), verticalAlignment = Alignment.CenterVertically) {
+        ModeTile(v, on)
+        Spacer(Modifier.size(Spacing.related))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText)
+            Text(terms, style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
+        }
+        Spacer(Modifier.size(Spacing.related))
+        Box(Modifier.size(22.dp).border(2.dp, if (on) BrandColors.Green else SemanticColors.Disabled, CircleShape),
+            contentAlignment = Alignment.Center) {
+            if (on) Box(Modifier.size(12.dp).background(BrandColors.Green, CircleShape))
         }
     }
+}
+
+// ---------- Squad ----------
+
+@Composable
+private fun androidx.compose.foundation.layout.ColumnScope.SquadTab(
+    s: UiState, onCreate: (String) -> Unit, onJoin: (String) -> Unit, goProfile: () -> Unit,
+) = Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+    Gap(8)
+    Text("Squad", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
+    if (s.facedownNow > 0) { Gap(8); LiveLine(s.facedownNow) }
+    Gap(20)
+    if (s.wallet == null) {
+        MessageState(PipMood.Resting, "Connect a wallet first", "Squads are tied to your wallet.", action = "Go to Profile",
+            onAction = goProfile)
+        return@Column
+    }
+    SquadSection(s.squad, onCreate, onJoin)
+    Gap(24)
 }
 
 @Composable
@@ -289,40 +538,85 @@ private fun greeting(): String = when (java.util.Calendar.getInstance().get(java
 @Composable
 private fun SquadSection(squad: com.presence.attest.Squad?, onCreate: (String) -> Unit, onJoin: (String) -> Unit) {
     val ctx = LocalContext.current
-    SectionLabel("Squad")
-    Gap(8)
     if (squad == null) {
         var code by remember { mutableStateOf("") }
-        Text("3 to 8 friends, one shared streak. If anyone misses a day, it breaks for everyone.",
-            style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
-        Gap(8)
-        PrimaryButton("Start a squad") { onCreate("My squad") }
+        Column(Modifier.fillMaxWidth().background(SemanticColors.SuccessTint, Shapes.large).padding(Spacing.section),
+            horizontalAlignment = Alignment.CenterHorizontally) {
+            Pip(PipMood.Explorer, 128.dp, entrance = true)
+            Gap(12)
+            Text("Put it down together", style = MaterialTheme.typography.headlineSmall, color = SemanticColors.PrimaryText)
+            Gap(6)
+            Text("3 to 8 friends share one streak. Each day it grows when everyone has a verified session.",
+                style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText, textAlign = TextAlign.Center)
+            Gap(16)
+            PrimaryButton("Start a squad") { onCreate("My squad") }
+        }
+        Gap(20)
+        SectionLabel("Have a code?")
         Gap(8)
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(code, { code = it.uppercase().take(6) }, Modifier.weight(1f), singleLine = true,
                 label = { Text("Invite code") })
             Spacer(Modifier.size(Spacing.related))
-            TextAction("Join") { if (code.length == 6) onJoin(code) }
+            SecondaryButton("Join", Modifier.width(96.dp)) { if (code.length == 6) onJoin(code) }
         }
         return
     }
-    Group {
-        KeyValue("Squad streak", if (squad.streak == 1) "1 day" else "${squad.streak} days", BrandColors.Green)
-        Hairline()
-        KeyValue("Done today", "${squad.doneToday} of ${squad.size}")
-        squad.members.forEach { m ->
-            Hairline()
-            KeyValue(if (m.you) "You" else shortAddress(m.wallet), when {
-                m.facedownNow -> "Facedown now"
-                m.doneToday -> "Done today"
-                else -> "Not yet"
-            }, if (m.facedownNow || m.doneToday) BrandColors.Green else SemanticColors.TertiaryText)
+    // Mode 4: the group's feathers. One per member, filled only for members with a verified session today.
+    val everyone = squad.size > 1 && squad.doneToday == squad.size
+    Column(Modifier.fillMaxWidth().background(if (everyone) SemanticColors.SuccessSoft else SemanticColors.SuccessTint, Shapes.large)
+        .padding(Spacing.section)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(squad.name, style = MaterialTheme.typography.titleMedium, color = SemanticColors.SecondaryText)
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text("${squad.streak}", style = MaterialTheme.typography.displayMedium, color = SemanticColors.PrimaryText)
+                    Spacer(Modifier.size(Spacing.compact))
+                    Text("day squad streak", style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText,
+                        modifier = Modifier.padding(bottom = 8.dp))
+                }
+            }
+            Pip(if (everyone) PipMood.Champion else PipMood.Ready, 76.dp, entrance = everyone)
+        }
+        Gap(12)
+        FeatherTrail(squad.members.map { it.doneToday }, featherSize = 18.dp)
+        Gap(8)
+        Text(if (everyone) "Everyone went facedown today." else "${squad.doneToday} of ${squad.size} done today",
+            style = MaterialTheme.typography.bodyMedium, color = if (everyone) BrandColors.Green else SemanticColors.SecondaryText)
+    }
+    Gap(20)
+    SectionLabel("Members")
+    Gap(8)
+    Column(Modifier.border(1.dp, SemanticColors.Border, Shapes.standard)) {
+        squad.members.forEachIndexed { i, m ->
+            if (i > 0) Hairline(Modifier.padding(start = 64.dp))
+            Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = Spacing.standard, vertical = Spacing.compact),
+                verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).background(if (m.doneToday) BrandColors.Green else SemanticColors.Subtle, CircleShape),
+                    contentAlignment = Alignment.Center) {
+                    Text(m.wallet.take(2).uppercase(), style = MaterialTheme.typography.labelMedium,
+                        color = if (m.doneToday) BrandColors.White else SemanticColors.SecondaryText)
+                }
+                Spacer(Modifier.size(Spacing.related))
+                Text(if (m.you) "You" else shortAddress(m.wallet), style = MaterialTheme.typography.titleMedium,
+                    color = SemanticColors.PrimaryText, modifier = Modifier.weight(1f))
+                Text(when { m.facedownNow -> "Facedown now"; m.doneToday -> "Done today"; else -> "Not yet today" },
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (m.facedownNow || m.doneToday) BrandColors.Green else SemanticColors.TertiaryText)
+            }
         }
     }
-    Gap(8)
-    TextAction("Invite with code ${squad.code}") {
-        ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,
-            "Join my FACEDOWN squad: code ${squad.code}. One shared streak, so don't break it."), "Invite"))
+    Gap(20)
+    Row(Modifier.fillMaxWidth().border(1.dp, SemanticColors.Border, Shapes.standard).padding(Spacing.standard),
+        verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)) {
+            SectionLabel("Invite code")
+            Text(squad.code, style = MaterialTheme.typography.headlineSmall.copy(letterSpacing = 3.sp), color = SemanticColors.PrimaryText)
+        }
+        SecondaryButton("Share", Modifier.width(110.dp)) {
+            ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,
+                "Join my FACEDOWN squad: code ${squad.code}. One shared streak, so don't break it."), "Invite"))
+        }
     }
 }
 
@@ -342,10 +636,9 @@ private fun PresenceRing() {
         }
         Spacer(Modifier.size(Spacing.standard))
         Column(Modifier.weight(1f)) {
-            Text("Facedown today: ${minutes / 60} h ${minutes % 60} min", style = MaterialTheme.typography.titleMedium,
-                color = SemanticColors.PrimaryText)
-            Text(if (on) "Goal ${PresenceMinutes.GOAL_MINUTES / 60} h. Counted whenever the phone lies face-down and still."
-                else "Count face-down time all day, even without a session.",
+            Text(if (on) "${minutes / 60} h ${minutes % 60} min facedown" else "Facedown time",
+                style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText)
+            Text(if (on) "Today, of a ${PresenceMinutes.GOAL_MINUTES / 60} h goal" else "Count it all day, no session needed",
                 style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
         }
         if (!on) TextAction("Turn on") { PresenceMinutes.setEnabled(ctx, true); on = true }
@@ -418,74 +711,186 @@ private fun Appointment() {
     }
 }
 
-@Composable
-private fun StreakLine(p: Profile) = Row(verticalAlignment = Alignment.CenterVertically) {
-    Text(if (p.streak == 1) "1-day streak" else "${p.streak}-day streak",
-        style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText)
-    Spacer(Modifier.weight(1f))
-    WeekDots(p)
-}
-
-/**
- * The last seven days, derived from the server's streak: a streak is by definition consecutive
- * days ending today (if done today) or yesterday.
- */
-@Composable
-private fun WeekDots(p: Profile) = Row(horizontalArrangement = Arrangement.spacedBy(6.dp),
-    modifier = Modifier.semantics { contentDescription = "Days kept this week, from the streak" }) {
-    for (daysAgo in 6 downTo 0) {
-        val offset = if (p.provedToday) daysAgo else daysAgo - 1
-        val kept = offset in 0 until p.streak
-        Box(Modifier.size(10.dp).then(
-            if (kept) Modifier.background(BrandColors.Green, CircleShape)
-            else Modifier.border(1.dp, SemanticColors.Border, CircleShape)))
-    }
-}
-
 // ---------- Progress ----------
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun androidx.compose.foundation.layout.ColumnScope.Progress(s: UiState, onConnect: () -> Unit,
-                                                                    onBuyFreeze: () -> Unit, onCreateSquad: (String) -> Unit,
-                                                                    onJoinSquad: (String) -> Unit) {
+private fun androidx.compose.foundation.layout.ColumnScope.Progress(s: UiState, onConnect: () -> Unit, onBuyFreeze: () -> Unit) {
+    val ctx = LocalContext.current
+    var replay by remember { mutableStateOf<Int?>(null) }
+    var openDay by remember { mutableStateOf<Int?>(null) }
+    var protection by remember { mutableStateOf(false) }
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-        Gap(16)
+        Gap(8)
         Text("Progress", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
-        Gap(24)
+        Gap(16)
         val p = s.profile
         if (s.wallet == null || p == null) {
-            Gap(32)
+            Gap(24)
             MessageState(PipMood.Resting, "Nothing here yet",
-                "Connect your wallet on Today and your verified sessions will collect here.")
+                "Connect your wallet and your verified sessions will collect here.", action = "Connect", onAction = onConnect)
             return@Column
         }
-        Row(Modifier.fillMaxWidth()) {
-            Figure("Current streak", "${p.streak}", Modifier.weight(1f))
-            Figure("Best streak", "${p.bestStreak}", Modifier.weight(1f))
-            Figure("Verified", "${p.verifiedCount}", Modifier.weight(1f))
+        // A. The hero: one focal number, a message for the real state, Pip on the way to the next milestone.
+        StreakHero(p.streak, p.provedToday)
+        Gap(28)
+        // B. The week: five honest states, today's feather arrives once.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SectionLabel("This week")
+            Spacer(Modifier.weight(1f))
+            Text("Best ${p.bestStreak} · ${p.verifiedCount} verified", style = MaterialTheme.typography.labelMedium,
+                color = SemanticColors.TertiaryText)
         }
-        Gap(24)
-        SquadSection(s.squad, onCreateSquad, onJoinSquad)
-        Gap(24)
-        Group {
-            KeyValue("Streak freezes", "${p.streakFreezes}")
+        Gap(12)
+        val week = weekOf(s.history)
+        val (arriving, onArrived) = arrivingToday(keptDays(s.history))
+        Column(Modifier.animateContentSize(tween(Motion.control, easing = Motion.Standard))) {
+            FeatherWeek(week, featherSize = 20.dp, arrivingToday = arriving != null, onArrived = onArrived,
+                onDay = { i -> openDay = if (openDay == i || week[i].state == DayState.Upcoming) null else i })
+            openDay?.let { i -> DaySessions(i, s.history) }
         }
-        Gap(8)
-        Text("A freeze keeps your streak through one missed day. It costs 2 ${s.missions.firstOrNull()?.reward?.symbol ?: "SKR"}; " +
-            "half is burned on-chain.", style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText)
-        Gap(8)
-        SecondaryButton(if (s.busy) "Waiting for your wallet…" else "Buy a streak freeze", onClick = onBuyFreeze)
-        Gap(32)
+        Gap(28)
+        // C. Milestones: earned, next, later.
+        SectionLabel("Milestones")
+        Gap(12)
+        MilestoneJourney(p.streak, p.bestStreak, onEarned = { replay = it })
+        Gap(28)
+        // D. Streak protection: compact here; the decision lives in a sheet.
+        Row(Modifier.fillMaxWidth().border(1.dp, SemanticColors.Border, Shapes.standard).clickable { protection = true }
+            .padding(Spacing.standard), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(40.dp).background(SemanticColors.SuccessTint, CircleShape), contentAlignment = Alignment.Center) {
+                ShieldGlyph(held = p.streakFreezes > 0)
+            }
+            Spacer(Modifier.size(Spacing.related))
+            Column(Modifier.weight(1f)) {
+                Text(if (p.streakFreezes == 1) "1 streak freeze" else "${p.streakFreezes} streak freezes",
+                    style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText)
+                Text("Each one covers a missed day", style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
+            }
+            Text("Terms  ›", style = MaterialTheme.typography.labelLarge, color = SemanticColors.PrimaryText)
+        }
+        Gap(28)
+        // E. Sessions.
         SectionLabel("Recent sessions")
-        Gap(4)
+        Gap(8)
         if (s.history.isEmpty()) {
-            Gap(32)
-            MessageState(PipMood.Resting, "No sessions yet", "Finished and interrupted sessions appear here.")
+            Text("Finished and interrupted sessions appear here.", style = MaterialTheme.typography.bodyMedium,
+                color = SemanticColors.TertiaryText)
         } else {
-            s.history.forEach { HistoryRow(it); Hairline() }
+            Column(Modifier.border(1.dp, SemanticColors.Border, Shapes.standard)) {
+                s.history.take(12).forEachIndexed { i, h ->
+                    if (i > 0) Hairline(Modifier.padding(start = 64.dp))
+                    HistoryRow(h)
+                }
+            }
         }
         Gap(24)
     }
+    replay?.let { n -> MilestoneFlight(n, onDone = { replay = null }, onShare = { shareMilestone(ctx, n) }) }
+    if (protection) androidx.compose.material3.ModalBottomSheet(onDismissRequest = { protection = false },
+        containerColor = BrandColors.White) {
+        FreezeTerms(s, onBuy = { protection = false; onBuyFreeze() }, onCancel = { protection = false })
+    }
+}
+
+/** A shield: outlined when nothing protects you, filled when something does (a freeze, a No-Loss lock). */
+@Composable
+private fun ShieldGlyph(held: Boolean, color: Color = BrandColors.Green, size: androidx.compose.ui.unit.Dp = 20.dp) {
+    androidx.compose.foundation.Canvas(Modifier.size(size)) {
+        val w = this.size.width; val h = this.size.height
+        val shield = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.5f, h * 0.06f); lineTo(w * 0.88f, h * 0.2f); lineTo(w * 0.88f, h * 0.48f)
+            cubicTo(w * 0.88f, h * 0.72f, w * 0.7f, h * 0.86f, w * 0.5f, h * 0.95f)
+            cubicTo(w * 0.3f, h * 0.86f, w * 0.12f, h * 0.72f, w * 0.12f, h * 0.48f)
+            lineTo(w * 0.12f, h * 0.2f); close()
+        }
+        if (held) drawPath(shield, color)
+        else drawPath(shield, if (color == BrandColors.Green) SemanticColors.SecondaryText else color,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), join = androidx.compose.ui.graphics.StrokeJoin.Round))
+    }
+}
+
+/** The mode's icon tile: a feather (Free), a shield (No-Loss), a coin stack (Stake). Filled green when chosen. */
+@Composable
+private fun ModeTile(v: MissionPolicy, on: Boolean) {
+    val ink = if (on) BrandColors.White else BrandColors.Green
+    Box(Modifier.size(48.dp).background(if (on) BrandColors.Green else SemanticColors.SuccessTint, Shapes.small),
+        contentAlignment = Alignment.Center) {
+        when {
+            v.stake.noLoss -> ShieldGlyph(true, ink, 24.dp)
+            staked(v) -> androidx.compose.foundation.Canvas(Modifier.size(24.dp)) {
+                val cw = size.width * 0.8f; val ch = size.height * 0.22f
+                for (i in 0..2) {
+                    val y = size.height * (0.72f - i * 0.24f)
+                    drawOval(ink, androidx.compose.ui.geometry.Offset((size.width - cw) / 2, y), androidx.compose.ui.geometry.Size(cw, ch))
+                    drawOval(if (on) BrandColors.Green else BrandColors.GreenMist,
+                        androidx.compose.ui.geometry.Offset((size.width - cw) / 2 + 2.dp.toPx(), y + 1.2.dp.toPx()),
+                        androidx.compose.ui.geometry.Size(cw - 4.dp.toPx(), ch - 3.dp.toPx()))
+                }
+            }
+            else -> androidx.compose.foundation.Canvas(Modifier.size(26.dp)) {
+                rotate(35f) {
+                    translate(left = size.width * 0.19f) { feather(ink, filled = true, w = size.width * 0.62f, h = size.height) }
+                }
+            }
+        }
+    }
+}
+
+/** Mode 5: a decision, not a celebration. Every term before any token moves. */
+@Composable
+private fun FreezeTerms(s: UiState, onBuy: () -> Unit, onCancel: () -> Unit) = Column(Modifier.padding(horizontal = Spacing.gutter)) {
+    val symbol = s.missions.firstOrNull()?.reward?.symbol ?: "TEST"
+    PipSays(PipMood.Guard, "A freeze guards your streak on a day you miss.", pipSize = 88.dp)
+    Gap(16)
+    Text("Streak freeze", style = MaterialTheme.typography.headlineSmall, color = SemanticColors.PrimaryText)
+    Gap(12)
+    Group {
+        KeyValue("Price", "2 $symbol")
+        Hairline()
+        KeyValue("What it does", "Covers 1 missed day")
+        Hairline()
+        KeyValue("Burned on-chain", "1 $symbol")
+        Hairline()
+        KeyValue("Kept by FACEDOWN", "1 $symbol")
+        Hairline()
+        KeyValue("You have", "${s.profile?.streakFreezes ?: 0}")
+    }
+    Gap(12)
+    Text("Your wallet asks you to approve one transfer; nothing moves until you do. A freeze is used automatically " +
+        "the next time you miss a day, and only then." + if (s.health?.network != "mainnet") " Off mainnet, $symbol is a test token with no value." else "",
+        style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
+    Gap(20)
+    PrimaryButton(if (s.busy) "Waiting for your wallet…" else "Buy for 2 $symbol", loading = s.busy, onClick = onBuy)
+    Gap(4)
+    TextAction("Not now", Modifier.align(Alignment.CenterHorizontally), onCancel)
+    Gap(24)
+}
+
+/** The sessions of one day of this week, in place under the week. */
+@Composable
+private fun DaySessions(index: Int, history: List<HistoryItem>) {
+    val cal = java.util.Calendar.getInstance()
+    fun key(ms: Long) = cal.apply { timeInMillis = ms }.let { it.get(java.util.Calendar.YEAR) * 1000 + it.get(java.util.Calendar.DAY_OF_YEAR) }
+    val now = System.currentTimeMillis()
+    cal.timeInMillis = now
+    val dow = (cal.get(java.util.Calendar.DAY_OF_WEEK) + 5) % 7
+    val day = key(now + (index - dow) * 86_400_000L)
+    val sessions = history.filter { h -> h.startedAt?.let { key((it * 1000).toLong()) == day } == true }
+    Column(Modifier.fillMaxWidth().padding(top = Spacing.related).background(SemanticColors.Subtle, Shapes.standard)
+        .padding(Spacing.related)) {
+        if (sessions.isEmpty()) Text("No sessions that day.", style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText)
+        sessions.forEach { h ->
+            Text("${h.missionName} · ${minutesLabel(h.durationSeconds.toInt())} · " +
+                if (h.state == "SETTLED" || h.state == "VERIFIED") "verified" else "not verified",
+                style = MaterialTheme.typography.bodyMedium, color = SemanticColors.PrimaryText)
+        }
+    }
+}
+
+private fun shareMilestone(ctx: android.content.Context, n: Int) {
+    ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,
+        "$n days of putting my phone face-down on FACEDOWN, each one verified on Monad."), "Share"))
 }
 
 @Composable
@@ -495,44 +900,42 @@ private fun Figure(label: String, value: String, modifier: Modifier) = Column(mo
     Text(label, style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
 }
 
+/** One session: status glyph, title, when and how long, then the real outcome; tap for the on-chain record. */
 @Composable
 private fun HistoryRow(h: HistoryItem) {
     val uri = LocalUriHandler.current
     val verified = h.state == "SETTLED" || h.state == "VERIFIED"
     val symbol = h.symbol ?: ""
-    val detail = when {
-        h.state == "SETTLED" && h.paid > 0 -> "Verified · ${formatToken(h.paid)} $symbol received"
-        h.state == "SETTLED" -> "Verified · recorded on Monad"
-        h.state == "VERIFIED" -> "Verified · not recorded on-chain"
-        h.stakeForfeited > 0 -> "Interrupted · ${formatToken(h.stakeForfeited)} stake to the pool"
-        h.stakeReturned > 0 -> "Interrupted · ${formatToken(h.stakeReturned)} stake returned"
-        h.stakeLocked > 0 -> "Interrupted · ${formatToken(h.stakeLocked)} stake locked" + (h.unlockAt?.let {
-            " until " + DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date((it * 1000).toLong()))
-        } ?: "")
+    val outcome = when {
+        h.state == "SETTLED" && h.paid > 0 -> "+${formatToken(h.paid)} $symbol"
+        h.state == "SETTLED" -> "On Monad"
+        h.state == "VERIFIED" -> "Not on-chain yet"
+        h.stakeLocked > 0 -> "Stake locked"
+        h.stakeReturned > 0 -> "Stake returned"
+        h.stakeForfeited > 0 -> "Stake to pool"
         else -> "Not verified"
     }
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 64.dp)
-            .then(h.explorerUrl?.let { url -> Modifier.clickable { uri.openUri(url) } } ?: Modifier)
-            .padding(vertical = Spacing.related),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.size(8.dp).background(if (verified) BrandColors.Green else SemanticColors.Disabled, CircleShape))
+    val meta = buildString {
+        h.startedAt?.let { append(java.text.SimpleDateFormat("EEE d MMM, HH:mm", java.util.Locale.getDefault()).format(Date((it * 1000).toLong()))) }
+        append(" · ${minutesLabel(h.durationSeconds.toInt())}")
+        if (!verified) append(" · interrupted")
+    }
+    Row(Modifier.fillMaxWidth().heightIn(min = 68.dp)
+        .then(h.explorerUrl?.let { url -> Modifier.clickable { uri.openUri(url) } } ?: Modifier)
+        .padding(horizontal = Spacing.standard, vertical = Spacing.related), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(36.dp).background(if (verified) SemanticColors.SuccessTint else SemanticColors.Subtle, CircleShape),
+            contentAlignment = Alignment.Center) {
+            FeatherTrail(listOf(verified), featherSize = 11.dp)
+        }
         Spacer(Modifier.size(Spacing.related))
         Column(Modifier.weight(1f)) {
             Text(h.missionName, style = MaterialTheme.typography.titleMedium, color = SemanticColors.PrimaryText)
-            Text(detail, style = MaterialTheme.typography.bodyMedium,
-                color = if (verified) SemanticColors.SecondaryText else SemanticColors.TertiaryText)
+            Text(meta, style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
         }
         Column(horizontalAlignment = Alignment.End) {
-            h.startedAt?.let {
-                Text(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date((it * 1000).toLong())),
-                    style = MaterialTheme.typography.labelMedium, color = SemanticColors.TertiaryText)
-            }
-            h.explorerUrl?.let {
-                Text("View ↗", style = MaterialTheme.typography.labelMedium, color = SemanticColors.PrimaryText,
-                    modifier = Modifier.padding(top = 4.dp))
-            }
+            Text(outcome, style = MaterialTheme.typography.labelLarge,
+                color = if (verified && h.paid > 0) BrandColors.Green else SemanticColors.PrimaryText)
+            if (h.explorerUrl != null) Text("Receipt ›", style = MaterialTheme.typography.labelMedium, color = SemanticColors.TertiaryText)
         }
     }
 }
@@ -543,27 +946,52 @@ private fun HistoryRow(h: HistoryItem) {
 private fun androidx.compose.foundation.layout.ColumnScope.ProfileTab(
     s: UiState, onConnect: () -> Unit, onDisconnect: () -> Unit, onRetry: () -> Unit, onCalibrate: () -> Unit,
 ) = Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-    Gap(16)
-    Text("Profile", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
-    Gap(24)
-
-    SectionLabel("Wallet")
     Gap(8)
-    Group {
-        KeyValue("Status", if (s.wallet != null) "Connected" else "Not connected")
-        s.wallet?.let {
-            Hairline()
-            KeyValue(it.label.ifBlank { "Account" }, shortAddress(it.address), mono = true)
+    Text("Profile", style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText)
+    Gap(20)
+    // Identity first: who is signed in, on which network, and what that wallet has done here.
+    Column(Modifier.fillMaxWidth().background(SemanticColors.Subtle, Shapes.large).padding(Spacing.section)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(52.dp).background(if (s.wallet != null) BrandColors.Green else SemanticColors.Disabled, CircleShape),
+                contentAlignment = Alignment.Center) {
+                Text(s.wallet?.address?.take(2)?.uppercase() ?: "–", style = MaterialTheme.typography.titleMedium, color = BrandColors.White)
+            }
+            Spacer(Modifier.size(Spacing.standard))
+            Column(Modifier.weight(1f)) {
+                Text(s.wallet?.let { shortAddress(it.address) } ?: "No wallet connected", style = MaterialTheme.typography.titleMedium,
+                    color = SemanticColors.PrimaryText)
+                Text(s.wallet?.let { "${it.label.ifBlank { "Wallet" }} · ${s.health?.network?.replaceFirstChar { c -> c.uppercase() } ?: "…"}" }
+                    ?: "Connect to start a session", style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
+            }
         }
+        s.profile?.let { p ->
+            Gap(16)
+            Row(Modifier.fillMaxWidth()) {
+                Figure("Verified", "${p.verifiedCount}", Modifier.weight(1f))
+                Figure("Best streak", "${p.bestStreak}", Modifier.weight(1f))
+                Figure("Freezes", "${p.streakFreezes}", Modifier.weight(1f))
+            }
+        }
+        Gap(16)
+        if (s.wallet == null) PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
+        else SecondaryButton("Disconnect wallet", onClick = onDisconnect)
     }
-    Gap(12)
-    if (s.wallet == null) PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
-    else SecondaryButton("Disconnect wallet", onClick = onDisconnect)
 
     Gap(32)
     SectionLabel("Urge Catcher")
     Gap(8)
     UrgeCatcherSettings()
+
+    Gap(32)
+    SectionLabel("Motion")
+    Gap(8)
+    val ctx2 = LocalContext.current
+    DurationSelector(listOf(false, true), MotionSettings.reduced, label = { if (it) "Reduced" else "Full" }) {
+        MotionSettings.set(ctx2, it)
+    }
+    Gap(8)
+    Text("Reduced turns off mascot motion, celebrations and spatial transitions. Android's \"Remove animations\" " +
+        "setting always does the same.", style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText)
 
     Gap(32)
     SectionLabel("Your knock")
@@ -596,7 +1024,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ProfileTab(
     if (s.backendError != null) SecondaryButton("Try again", Modifier.padding(top = 12.dp), onClick = onRetry)
     if (h != null && h.network != "mainnet") {
         Gap(8)
-        Text("Off mainnet, stakes use a test token (${s.missions.firstOrNull()?.reward?.symbol ?: "SKR-TEST"}) with no value.",
+        Text("Off mainnet, stakes use a test token (${s.missions.firstOrNull()?.reward?.symbol ?: "TEST"}) with no value.",
             style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText)
     }
 

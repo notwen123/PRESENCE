@@ -30,6 +30,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -52,7 +53,12 @@ import com.presence.ui.screens.ReceiptScreen
 import com.presence.ui.screens.VerifyingScreen
 import com.presence.ui.theme.BrandColors
 import com.presence.ui.theme.ClockInTheme
+import com.presence.ui.theme.LocalReducedMotion
 import com.presence.ui.theme.Motion
+import com.presence.ui.theme.MotionSettings
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.ui.graphics.TransformOrigin
 import com.solana.mobilewalletadapter.clientlib.ActivityResultSender
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -68,7 +74,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         pendingMission.value = intent.getStringExtra(EXTRA_MISSION)
-        // Native launch screen: white, the clock mark, its hand moves once (API 31+). Never held open:
+        // Native launch screen: white with Pip (API 31+). Never held open:
         // the first frame replaces it as soon as it's drawn; data loads inside the app.
         installSplashScreen().setOnExitAnimationListener { splash ->
             val reduced = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
@@ -86,8 +92,17 @@ class MainActivity : ComponentActivity() {
         // White UI: dark status/nav bar icons regardless of system theme.
         enableEdgeToEdge(SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
             SystemBarStyle.light(Color.WHITE, Color.WHITE))
+        MotionSettings.load(this)
         val sender = ActivityResultSender(this)
-        setContent { ClockInTheme { ClockInRoot(sender, pendingMission) } }
+        // Debug-only fixture for screenshots: `--ei preview_milestone 3` draws the milestone overlay alone. No data changes.
+        val preview = if (BuildConfig.DEBUG) intent.getIntExtra("preview_milestone", 0) else 0
+        setContent {
+            ClockInTheme {
+                ClockInRoot(sender, pendingMission)
+                var shown by remember { mutableStateOf(preview > 0) }
+                if (shown) com.presence.ui.components.MilestoneFlight(preview, onDone = { shown = false }, onShare = {})
+            }
+        }
     }
 
     companion object {
@@ -99,6 +114,7 @@ class MainActivity : ComponentActivity() {
 fun ClockInRoot(sender: ActivityResultSender, pendingMission: MutableState<String?>,
                 vm: PresenceViewModel = hiltViewModel()) {
     val s by vm.state.collectAsStateWithLifecycle()
+    val reduced = LocalReducedMotion.current
     LaunchedEffect(pendingMission.value, s.missions) {
         val id = pendingMission.value ?: return@LaunchedEffect
         s.missions.firstOrNull { it.missionId == id }?.let { vm.openMission(it); pendingMission.value = null }
@@ -121,8 +137,19 @@ fun ClockInRoot(sender: ActivityResultSender, pendingMission: MutableState<Strin
 
     Box(Modifier.fillMaxSize()) {
         // Crossfade between screens; Active/Countdown updates keep the same key so they don't re-animate.
-        AnimatedContent(s.screen, contentKey = { it::class }, label = "screen",
-            transitionSpec = { fadeIn(tween(Motion.screen)) togetherWith fadeOut(tween(Motion.micro)) }) { screen ->
+        AnimatedContent(s.screen, contentKey = { it::class }, label = "screen", transitionSpec = {
+            val committing = initialState is Screen.Mission && targetState is Screen.Countdown
+            when {
+                reduced -> fadeIn(tween(Motion.micro)) togetherWith fadeOut(tween(Motion.micro))
+                // Commitment → session: the terms contract into the button you pressed, and the countdown
+                // grows out of the same place, so the session is visibly the thing you just committed to.
+                committing -> (scaleIn(tween(Motion.spatial, easing = Motion.Emphasized), initialScale = 0.86f,
+                    transformOrigin = TransformOrigin(0.5f, 0.93f)) + fadeIn(tween(Motion.spatial))) togetherWith
+                    (scaleOut(tween(Motion.control, easing = Motion.Exit), targetScale = 0.94f,
+                        transformOrigin = TransformOrigin(0.5f, 0.93f)) + fadeOut(tween(Motion.control)))
+                else -> fadeIn(tween(Motion.screen)) togetherWith fadeOut(tween(Motion.micro))
+            }
+        }) { screen ->
             when (screen) {
                 Screen.Home -> HomeScreen(s, onConnect = { vm.connect(sender) }, onSelect = vm::select,
                     onOpen = vm::openMission, onDisconnect = vm::disconnect, onRetry = { vm.refresh() },
@@ -133,7 +160,7 @@ fun ClockInRoot(sender: ActivityResultSender, pendingMission: MutableState<Strin
                 is Screen.Active -> ActiveScreen(screen, s.facedownNow, onPulse = vm::onPulse, onBuzz = vm::onBuzz)
                 is Screen.Verifying -> VerifyingScreen(screen)
                 is Screen.Calibrate -> CalibrateScreen(screen, onDone = vm::endCalibration)
-                is Screen.Result -> ReceiptScreen(screen, onDone = vm::home)
+                is Screen.Result -> ReceiptScreen(screen, s.history, onDone = vm::home)
                 is Screen.Failed -> FailedScreen(screen, onRetry = vm::openMission, onHome = vm::home)
             }
         }

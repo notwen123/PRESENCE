@@ -64,7 +64,7 @@ class InterceptActivity : ComponentActivity() {
                     TopBar()
                     Spacer(Modifier.weight(1f))
                     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Pip(PipMood.Retry, 160.dp, entrance = true, live = true)
+                        Pip(PipMood.Thinking, 160.dp, entrance = true, live = true)
                         Gap(24)
                         Text("About to open $name?", style = MaterialTheme.typography.headlineLarge,
                             color = SemanticColors.PrimaryText, textAlign = TextAlign.Center)

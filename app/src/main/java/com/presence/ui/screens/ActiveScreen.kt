@@ -138,7 +138,7 @@ private fun Timer(a: Screen.Active) {
     }
 }
 
-/** Fixed-height slot so the layout never jumps when a check-in appears. Pip is alive but slow and quiet. */
+/** Fixed-height slot so the layout never jumps when a check-in appears. No loops, no mascot motion here. */
 @Composable
 private fun CheckIn(visible: Boolean, onConfirm: () -> Unit) {
     val reduced = LocalReducedMotion.current
@@ -152,7 +152,7 @@ private fun CheckIn(visible: Boolean, onConfirm: () -> Unit) {
                     color = SemanticColors.PrimaryText)
                 Gap(12)
                 PrimaryButton("I'm here", onClick = onConfirm)
-            } else Pip(PipMood.Still, 136.dp, entrance = true, live = true) // hops back in after each check-in
+            } else Pip(PipMood.Focus, 120.dp) // still: the session screen is the quietest place in the app
         }
     }
 }
@@ -162,7 +162,7 @@ fun CountdownScreen(seconds: Int) = Page {
     TopBar()
     Spacer(Modifier.weight(1f))
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Pip(PipMood.Still, 176.dp, entrance = true, live = true)
+        Pip(PipMood.Runner, 176.dp)
         Gap(24)
         Text("Turn your phone face-down.", style = MaterialTheme.typography.headlineLarge,
             color = SemanticColors.PrimaryText, textAlign = TextAlign.Center)
@@ -188,7 +188,7 @@ fun CalibrateScreen(c: Screen.Calibrate, onDone: () -> Unit) = Page {
     TopBar(onBack = onDone)
     Spacer(Modifier.weight(1f))
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Pip(if (c.threshold != null) PipMood.Proud else PipMood.Still, 160.dp, live = true)
+        Pip(if (c.threshold != null) PipMood.Champion else PipMood.Mechanic, 160.dp)
         Gap(24)
         Text(if (c.threshold != null) "Got your knock." else "Teach FACEDOWN your knock",
             style = MaterialTheme.typography.headlineLarge, color = SemanticColors.PrimaryText, textAlign = TextAlign.Center)

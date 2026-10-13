@@ -1,4 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launch screen: the waving mascot, kept inside the splash icon's circular safe area. -->
-<inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:drawable="@drawable/mascot_ready" android:inset="22%" />
+<inset android:drawable="@drawable/mascot_ready" android:inset="22.000004%"
+  xmlns:android="http://schemas.android.com/apk/res/android" />

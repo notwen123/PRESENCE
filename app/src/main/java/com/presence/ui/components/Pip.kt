@@ -39,14 +39,37 @@ import com.presence.ui.theme.LocalReducedMotion
 import kotlin.math.PI
 import kotlin.math.sin
 
-/** Pip, the FACEDOWN bird. One pose per moment; art lives in res/drawable-nodpi (cut from public/macouts.png). */
+/**
+ * Pip, the FACEDOWN woodpecker. Poses in res/drawable-nodpi, cut from public/macouts.png and public/more_pack.png.
+ * Each pose belongs to one real state, so the costume tells you where you are.
+ */
 enum class PipMood(@DrawableRes val art: Int, val description: String) {
     Ready(R.drawable.mascot_ready, "Pip waving hello"),
-    Still(R.drawable.mascot_still, "Pip focusing with a notepad"),
+    Focus(R.drawable.mascot_still, "Pip focusing with a notepad"),
     Thinking(R.drawable.mascot_thinking, "Pip looking up, checking"),
-    Proud(R.drawable.mascot_proud, "Pip celebrating"),
-    Retry(R.drawable.mascot_encourage, "Pip encouraging you to try again"),
+    Verified(R.drawable.mascot_wave, "Pip pleased: verified"),
+    Celebrating(R.drawable.mascot_proud, "Pip celebrating"),
+    Encouraging(R.drawable.mascot_encourage, "Pip encouraging you to try again"),
     Resting(R.drawable.mascot_resting, "Pip resting"),
+    Coach(R.drawable.mascot_coach, "Pip in a tracksuit, thumbs up"),
+    Runner(R.drawable.mascot_runner, "Pip running"),
+    Scientist(R.drawable.mascot_scientist, "Pip in a lab coat, checking the evidence"),
+    Champion(R.drawable.mascot_champion, "Pip cheering with a medal"),
+    Guard(R.drawable.mascot_guard, "Pip on guard, thumbs up"),
+    Explorer(R.drawable.mascot_explorer, "Pip with a backpack, saluting"),
+    Mechanic(R.drawable.mascot_mechanic, "Pip with a wrench"),
+    Pilot(R.drawable.mascot_pilot, "Pip in a flight jacket"),
+    Astronaut(R.drawable.mascot_astronaut, "Pip in a space suit"),
+    Graduate(R.drawable.mascot_graduate, "Pip graduating"),
+}
+
+/** The milestone costume: rarer milestones get a rarer Pip. */
+fun milestoneMood(streak: Int) = when {
+    streak >= 100 -> PipMood.Graduate
+    streak >= 60 -> PipMood.Astronaut
+    streak >= 30 -> PipMood.Explorer
+    streak >= 14 -> PipMood.Pilot
+    else -> PipMood.Champion
 }
 
 /**
@@ -91,7 +114,7 @@ private fun idleMotion(mood: PipMood): Idle {
     val breathe = t.animateFloat(0f, 1f, infiniteRepeatable(tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse), "breathe")
     val sway = t.animateFloat(-1f, 1f, infiniteRepeatable(tween(4800, easing = FastOutSlowInEasing), RepeatMode.Reverse), "sway")
     // The focus pose holds a notepad: a small nod every few seconds reads as writing.
-    val nod = if (mood == PipMood.Still) t.animateFloat(0f, 0f, infiniteRepeatable(keyframes {
+    val nod = if (mood == PipMood.Focus) t.animateFloat(0f, 0f, infiniteRepeatable(keyframes {
         durationMillis = 2600
         0f at 0; 0f at 1700; -3.5f at 1850; 0.8f at 2000; -2.5f at 2150; 0f at 2350
     }), "nod") else zero
