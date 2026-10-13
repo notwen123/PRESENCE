@@ -47,3 +47,23 @@ def test_monad_only_deployment_settles_on_monad(api, svc, clock, device):
     rc = submit_and_verify(api, sess).json()["receipt"]
     assert rc["settlement"]["status"] == "CONFIRMED" and rc["settlement"]["chain"] == "monad-testnet"
     assert api.get(f"/session/{sess.session_id}/receipt").json()["settlement"]["tx"] == "0xabc"
+
+
+def test_metamask_wallet_signs_in_with_siwe(api, svc, clock):
+    from eth_account import Account
+    from eth_account.messages import encode_defunct
+    from .sim import SimDevice
+    acct, d = Account.create(), SimDevice()
+    r = api.post("/session", json={"wallet": acct.address, "mission_id": "quick-free", "ephemeral_pubkey": d.ephemeral_pubkey}).json()
+    assert "sign in with your Ethereum account" in r["siws_message"] and "Chain ID: 10143" in r["siws_message"]
+    bad = Account.create().sign_message(encode_defunct(text=r["siws_message"])).signature.hex()
+    assert api.post(f"/session/{r['session_id']}/authorize", json={"signature": "0x" + bad.removeprefix("0x")}).status_code == 401
+    sig = acct.sign_message(encode_defunct(text=r["siws_message"])).signature.hex()
+    ok = api.post(f"/session/{r['session_id']}/authorize", json={"signature": "0x" + sig.removeprefix("0x")})
+    assert ok.status_code == 200 and ok.json()["state"] == "ACTIVE"
+
+
+def test_monad_only_lists_only_unstaked_missions(api, svc):
+    from attest.settlement import UnconfiguredAttestor
+    svc.attestor = UnconfiguredAttestor()
+    assert all(not m["stake"]["token"] for m in api.get("/missions").json())

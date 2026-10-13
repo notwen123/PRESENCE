@@ -27,7 +27,13 @@ def _iso(ts: float) -> str:
     return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+def is_evm(wallet: str) -> bool:
+    return len(wallet) == 42 and wallet[:2] in ("0x", "0X") and all(c in "0123456789abcdefABCDEF" for c in wallet[2:])
+
+
 def decode_wallet(wallet: str) -> bytes:
+    if is_evm(wallet):  # MetaMask / any EVM account on Monad
+        return bytes.fromhex(wallet[2:])
     try:
         raw = base58.b58decode(wallet)
     except ValueError:
@@ -43,9 +49,11 @@ def ephemeral_fingerprint(ephemeral_pubkey_b64: str) -> str:
 
 def siws_message(*, domain: str, wallet: str, chain_id: str, nonce: str, session_id: str,
                  mission_name: str, ephemeral_pubkey_b64: str, issued_at: float, expires_at: float) -> str:
-    """Sign-In-With-Solana formatted message. The server stores it and verifies the exact bytes."""
+    """SIWE (EIP-4361) for EVM wallets, SIWS for ed25519 wallets. The server stores it and verifies the exact bytes."""
+    if is_evm(wallet):
+        chain_id = chain_id if chain_id.isdigit() else "10143"  # Monad testnet
     return (
-        f"{domain} wants you to sign in with your Solana account:\n"
+        f"{domain} wants you to sign in with your {'Ethereum' if is_evm(wallet) else 'Solana'} account:\n"
         f"{wallet}\n\n"
         f"Start PRESENCE mission: {mission_name}\n\n"
         f"URI: https://{domain}\n"
@@ -61,6 +69,16 @@ def siws_message(*, domain: str, wallet: str, chain_id: str, nonce: str, session
 
 
 def verify_wallet_signature(wallet: str, message: str, signature_b58: str) -> None:
+    if is_evm(wallet):  # personal_sign (EIP-191) from MetaMask: 0x-hex signature
+        from eth_account import Account
+        from eth_account.messages import encode_defunct
+        try:
+            signer = Account.recover_message(encode_defunct(text=message), signature=signature_b58)
+        except Exception as e:
+            raise AttestError(Reason.INVALID_SIGNATURE, "wallet signature does not match SIWE message") from e
+        if signer.lower() != wallet.lower():
+            raise AttestError(Reason.INVALID_SIGNATURE, "wallet signature does not match SIWE message")
+        return
     try:
         sig = base58.b58decode(signature_b58)
         Ed25519PublicKey.from_public_bytes(decode_wallet(wallet)).verify(sig, message.encode())

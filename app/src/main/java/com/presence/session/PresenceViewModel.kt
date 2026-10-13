@@ -246,7 +246,7 @@ class PresenceViewModel @Inject constructor(
                 val session = api.createSession(account.address, mission.missionId, key.publicKeyB64)
                 val stakeTx = session.stake?.let { Base64.decode(it.transaction, Base64.NO_WRAP) }
                 val (signature, stakeSigned) = wallet.signSession(sender, session.siwsMessage, stakeTx)
-                val auth = api.authorize(session.sessionId, Base58.encodeToString(signature),
+                val auth = api.authorize(session.sessionId, if (account.address.startsWith("0x")) "0x" + signature.joinToString("") { "%02x".format(it) } else Base58.encodeToString(signature),
                     stakeSigned?.let { Base64.encodeToString(it, Base64.NO_WRAP) })
                 staked = session.stake?.let { "${formatToken(it.amount)} ${it.symbol}" }
                 log(session.sessionId, "authorized", auth.eligibility)
@@ -263,7 +263,7 @@ class PresenceViewModel @Inject constructor(
 
                 val checks = mutableListOf(
                     Check("Wallet signature", CheckStatus.PASSED),
-                    Check("Seeker device check",
+                    Check("Device check",
                         if (auth.eligibility == "SGT_VERIFIED") CheckStatus.PASSED else CheckStatus.DEV_BYPASS),
                     Check("One-time session code", CheckStatus.PASSED),
                     Check("Session evidence"),
@@ -271,7 +271,7 @@ class PresenceViewModel @Inject constructor(
                     Check("Human touch"),
                     Check("Phone stayed down"),
                     Check("Not claimed before"),
-                    Check("Recorded on Solana"),
+                    Check("Recorded on Monad"),
                 )
                 fun show() = _state.update { it.copy(screen = Screen.Verifying(checks.toList())) }
                 show()

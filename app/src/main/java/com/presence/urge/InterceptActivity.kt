@@ -69,7 +69,7 @@ class InterceptActivity : ComponentActivity() {
                         Text("About to open $name?", style = MaterialTheme.typography.headlineLarge,
                             color = SemanticColors.PrimaryText, textAlign = TextAlign.Center)
                         Gap(8)
-                        Text("Put it down for 10 minutes instead. Finish and it counts, on Solana.",
+                        Text("Put it down for 10 minutes instead. Finish and it counts, on Monad.",
                             style = MaterialTheme.typography.bodyLarge, color = SemanticColors.SecondaryText,
                             textAlign = TextAlign.Center)
                     }

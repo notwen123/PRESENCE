@@ -31,7 +31,7 @@ class AttestException(val reason: String, val detail: String = "") : Exception("
 data class Reward(
     val xp: Int,
     val token: Double = 0.0,
-    val symbol: String = "SKR",
+    val symbol: String = "TEST",
     val funding: String? = null,
     val stake: Double = 0.0,
     val bonus: Double = 0.0,
@@ -136,7 +136,7 @@ data class Settlement(
     val detail: String? = null,
     @SerialName("explorer_url") val explorerUrl: String? = null,
     @SerialName("reward_token") val rewardToken: Double = 0.0,
-    @SerialName("reward_symbol") val rewardSymbol: String = "SKR",
+    @SerialName("reward_symbol") val rewardSymbol: String = "TEST",
     @SerialName("reward_mint") val rewardMint: String? = null,
 )
 

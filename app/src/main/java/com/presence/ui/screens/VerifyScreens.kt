@@ -161,7 +161,7 @@ fun ReceiptScreen(r: Screen.Result, onDone: () -> Unit) = Page {
             Hairline()
             Physical("Human touch", rc.checks["human_touch"])
             Physical("Phone stayed down", rc.checks["phone_down"])
-            KeyValue("Recorded on Solana", when (s.status) {
+            KeyValue("Recorded on Monad", when (s.status) {
                 "CONFIRMED" -> "Confirmed · ${s.network}"
                 "NOT_CONFIGURED" -> "Not configured"
                 else -> "Failed"
@@ -187,7 +187,7 @@ fun ReceiptScreen(r: Screen.Result, onDone: () -> Unit) = Page {
         }
         if (rc.mode == "development") {
             Gap(12)
-            Text("Development mode: the Seeker device check was bypassed and $symbol is a test token with no value.",
+            Text("Development mode: the device check was bypassed and $symbol is a test token with no value.",
                 style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
         }
 

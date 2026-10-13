@@ -2,12 +2,6 @@ package com.presence.di
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.net.Uri
-import com.presence.BuildConfig
-import com.presence.wallet.WalletIdentity
-import com.solana.mobilewalletadapter.clientlib.ConnectionIdentity
-import com.solana.mobilewalletadapter.clientlib.MobileWalletAdapter
-import com.solana.mobilewalletadapter.clientlib.Solana
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,18 +19,6 @@ object AppModule {
     @Singleton
     fun sharedPrefs(@ApplicationContext ctx: Context): SharedPreferences =
         ctx.getSharedPreferences("presence", Context.MODE_PRIVATE)
-
-    @Provides
-    @Singleton
-    fun walletAdapter(): MobileWalletAdapter =
-        MobileWalletAdapter(
-            connectionIdentity = ConnectionIdentity(WalletIdentity.uri, WalletIdentity.icon, WalletIdentity.name)
-        ).apply {
-            blockchain = when (BuildConfig.NETWORK) {
-                "mainnet" -> Solana.Mainnet
-                else -> Solana.Devnet
-            }
-        }
 
     @Provides
     @Singleton

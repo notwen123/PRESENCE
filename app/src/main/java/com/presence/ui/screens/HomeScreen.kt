@@ -141,7 +141,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.Today(
             if (s.backendError == null && m != null)
                 Pip(if (s.profile?.provedToday == true) PipMood.Proud else PipMood.Ready, 128.dp, entrance = true, live = true)
         }
-        Text("Phone face-down for a set time. Finish, and a real, human session is verified on Solana.",
+        Text("Phone face-down for a set time. Finish, and a real, human session is verified on Monad.",
             style = MaterialTheme.typography.bodyLarge, color = SemanticColors.SecondaryText)
         if (s.facedownNow > 0) {
             Gap(12)
@@ -204,7 +204,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.Today(
         when {
             s.wallet == null -> {
                 PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
-                Text("Uses your Solana wallet app. FACEDOWN never sees your keys.",
+                Text("Uses MetaMask on Monad testnet. FACEDOWN never sees your keys.",
                     style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText,
                     modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.related))
             }
@@ -472,7 +472,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.Progress(s: UiState, 
         }
         Gap(8)
         Text("A freeze keeps your streak through one missed day. It costs 2 ${s.missions.firstOrNull()?.reward?.symbol ?: "SKR"}; " +
-            "half is burned on Solana.", style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText)
+            "half is burned on-chain.", style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText)
         Gap(8)
         SecondaryButton(if (s.busy) "Waiting for your wallet…" else "Buy a streak freeze", onClick = onBuyFreeze)
         Gap(32)
@@ -502,7 +502,7 @@ private fun HistoryRow(h: HistoryItem) {
     val symbol = h.symbol ?: ""
     val detail = when {
         h.state == "SETTLED" && h.paid > 0 -> "Verified · ${formatToken(h.paid)} $symbol received"
-        h.state == "SETTLED" -> "Verified · recorded on Solana"
+        h.state == "SETTLED" -> "Verified · recorded on Monad"
         h.state == "VERIFIED" -> "Verified · not recorded on-chain"
         h.stakeForfeited > 0 -> "Interrupted · ${formatToken(h.stakeForfeited)} stake to the pool"
         h.stakeReturned > 0 -> "Interrupted · ${formatToken(h.stakeReturned)} stake returned"
@@ -590,7 +590,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ProfileTab(
             Hairline()
             KeyValue("Network", it.network.replaceFirstChar { c -> c.uppercase() }, icon = R.drawable.solana_mark)
             Hairline()
-            KeyValue("Seeker check", if (it.mode == "development") "Bypassed (development)" else "Required")
+            KeyValue("Device check", if (it.mode == "development") "Bypassed (development)" else "Required")
         }
     }
     if (s.backendError != null) SecondaryButton("Try again", Modifier.padding(top = 12.dp), onClick = onRetry)
@@ -607,7 +607,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ProfileTab(
         "and two motion numbers per check-in from the accelerometer: how much of the time the phone lay still and face-down, and " +
         "how much your knock or tap moved it. Raw sensor data never leaves the phone. No location, contacts, microphone or " +
         "camera, and nothing in the background. " +
-        "Only a fingerprint (hash) of the session is written to Solana.",
+        "Only a fingerprint (hash) of the session is written to Monad.",
         style = MaterialTheme.typography.bodyMedium, color = SemanticColors.SecondaryText)
     Gap(8)
     Text("It proves this phone stayed in the session. It can't prove what you were thinking about, " +

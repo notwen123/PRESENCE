@@ -99,8 +99,9 @@ def create_app(service: Attest | None = None) -> FastAPI:
 
     @app.get("/health")
     def health():
+        monad_only = svc.monad and isinstance(svc.attestor, UnconfiguredAttestor)
         return {"ok": True, "mode": "development" if svc.dev_mode else "production",
-                "network": svc.network, "settlement": type(svc.attestor).__name__,
+                "network": "monad testnet" if monad_only else svc.network, "settlement": type(svc.attestor).__name__,
                 "physical": "enforced" if svc.enforce_physical else "reported",
                 "anchor": "monad-testnet" if svc.monad else None}
 
@@ -111,8 +112,10 @@ def create_app(service: Attest | None = None) -> FastAPI:
 
     @app.get("/missions")
     def missions():
+        # Without a token pool (Monad-only deployment) only missions with no stake can run.
+        staking = not isinstance(svc.attestor, UnconfiguredAttestor)
         return [{**m.public(), "reward": {**m.public()["reward"], "symbol": svc.symbol(m)}}
-                for m in svc.missions.values()]
+                for m in svc.missions.values() if staking or not m.stake_token]
 
     @app.post("/session")
     def create_session(body: CreateSession):
