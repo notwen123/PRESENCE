@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("kotlin-kapt")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.dagger.hilt.android")
@@ -9,6 +10,9 @@ plugins {
 // Override with -Ppresence.backendUrl=... or in ~/.gradle/gradle.properties.
 // 10.0.2.2 is the host machine as seen from the Android emulator.
 val backendUrl = providers.gradleProperty("presence.backendUrl").getOrElse("http://10.0.2.2:8787")
+// Privy app (dashboard.privy.io): public IDs, not secrets. Google login + embedded wallet on Monad.
+val privyAppId = providers.gradleProperty("presence.privyAppId").getOrElse("")
+val privyClientId = providers.gradleProperty("presence.privyClientId").getOrElse("")
 val network = providers.gradleProperty("presence.network").getOrElse("devnet")
 require(network in setOf("localnet", "devnet", "mainnet")) { "presence.network must be localnet|devnet|mainnet" }
 
@@ -18,12 +22,14 @@ android {
 
     defaultConfig {
         applicationId = "com.presence"
-        minSdk = 24
+        minSdk = 28  // Privy embedded wallets need API 28
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
         buildConfigField("String", "BACKEND_URL", "\"$backendUrl\"")
         buildConfigField("String", "NETWORK", "\"$network\"")
+        buildConfigField("String", "PRIVY_APP_ID", "\"$privyAppId\"")
+        buildConfigField("String", "PRIVY_CLIENT_ID", "\"$privyClientId\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -62,13 +68,11 @@ android {
         compose = true
         buildConfig = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/META-INF/versions/9/previous-compilation-data.bin"
+            excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         }
     }
 }
@@ -91,12 +95,13 @@ dependencies {
     implementation("io.ktor:ktor-client-android:2.3.12")
 
     implementation("io.github.funkatronics:multimult:0.2.0")
+    implementation("io.privy:privy-core:0.16.0")
     implementation("com.google.zxing:core:3.5.3") // QR code of the on-chain proof on the receipt
     implementation("com.solanamobile:web3-solana:0.2.2")
     implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.0")
 
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    kapt("com.google.dagger:hilt-compiler:2.51.1")
+    implementation("com.google.dagger:hilt-android:2.55")
+    kapt("com.google.dagger:hilt-compiler:2.55")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

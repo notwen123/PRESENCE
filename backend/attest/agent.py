@@ -42,7 +42,7 @@ class Sender:
         rpc, me = self.anchor._rpc, self.account.address
         with self.lock:
             call = {"from": me, "to": to, "data": "0x" + data.hex(), "value": hex(value)}
-            gas = int(int(rpc("eth_estimateGas", [call, "latest"]), 16) * 1.25)
+            gas = int(int(rpc("eth_estimateGas", [call, "latest"]), 16) * 1.1)  # Monad bills the gas limit, keep it tight
             base = int(rpc("eth_getBlockByNumber", ["latest", False])["baseFeePerGas"], 16)
             tip = int(rpc("eth_maxPriorityFeePerGas", []), 16)
             tx = {"type": 2, "chainId": self.anchor.chain_id, "nonce": int(rpc("eth_getTransactionCount", [me, "pending"]), 16),
@@ -115,7 +115,10 @@ def mount(app: FastAPI, svc, guard: str, agent_key: str, anchor: MonadAnchor, at
         if not 0 < q.amount <= 0.05:
             raise AttestError(Reason.INVALID_STATE, "demo amounts are 0..0.05 MON")
         wei = round(q.amount * 10 ** 18)
-        r = agent.send(guard, SEL["send(bytes32,address,uint256)"] + b32(q.account) + bytes(12) + bytes.fromhex(recipient[2:]) + wei.to_bytes(32, "big"))
+        try:
+            r = agent.send(guard, SEL["send(bytes32,address,uint256)"] + b32(q.account) + bytes(12) + bytes.fromhex(recipient[2:]) + wei.to_bytes(32, "big"))
+        except RuntimeError as e:  # e.g. the agent's wallet is out of gas, or the guard is out of MON
+            raise AttestError(Reason.NETWORK_ERROR, f"agent transaction failed: {e}")
         for l in r["logs"]:
             if l["topics"][0].lower() == INTENT.lower():
                 iid = l["topics"][1]; deadline = int(l["data"][66:130], 16)

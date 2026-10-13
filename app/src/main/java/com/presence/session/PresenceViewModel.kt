@@ -120,7 +120,7 @@ class PresenceViewModel @Inject constructor(
         guarded {
             _state.update { it.copy(busy = true) }
             val order = api.freezeOrder(account.address)
-            wallet.payFreeze(order.orderId)  // MetaMask pays on Monad; ATTEST verifies it and burns half
+            wallet.payFreeze(order.orderId, order.transaction)  // the wallet pays on Monad; ATTEST verifies it and burns half
             _state.update { it.copy(busy = false, message = "Streak freeze added. ${formatToken(order.price / 2)} ${order.symbol} burned on Monad.") }
             refresh()
         }
@@ -182,7 +182,7 @@ class PresenceViewModel @Inject constructor(
         }
     }
 
-    fun disconnect() {
+    fun disconnect() = viewModelScope.launch {
         wallet.disconnect()
         _state.update { it.copy(wallet = null, profile = null, history = emptyList()) }
     }
@@ -245,12 +245,12 @@ class PresenceViewModel @Inject constructor(
                 if (mission.stake.token > 0) ensureTestFunds(account.address)
                 val session = api.createSession(account.address, mission.missionId, key.publicKeyB64)
                 val stakeTx = session.stake?.let { Base64.decode(it.transaction, Base64.NO_WRAP) }
-                wallet.authorizeSession(session.sessionId)
-                // The wallet signed in MetaMask: wait until the user is back in FACEDOWN, then start the server clock.
+                wallet.authorizeSession(session.sessionId, session.stake?.transaction)
+                // With MetaMask the wallet signed in another app: wait until the user is back in FACEDOWN, then start the server clock.
                 com.presence.AppForeground.resumed.first { it }
                 api.beginSession(session.sessionId)
                 staked = null
-                log(session.sessionId, "authorized", "metamask")
+                log(session.sessionId, "authorized", wallet.account?.label ?: "wallet")
                 _state.update { it.copy(busy = false) }
 
                 // Short countdown after returning from the wallet so the first window isn't missed.

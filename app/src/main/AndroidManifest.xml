@@ -79,6 +79,18 @@
             </intent-filter>
             <meta-data android:name="android.accessibilityservice" android:resource="@xml/urge_catcher" />
         </service>
+            <!-- Privy: Google sign-in returns here (facedown-privy://) -->
+        <activity
+            android:name="io.privy.sdk.oAuth.PrivyRedirectActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="facedown-privy" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
