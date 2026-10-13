@@ -230,8 +230,8 @@ games leave players at a loss (Gao)."
 - **Sensors can be faked by a privileged agent** ([ActReal](https://arxiv.org/abs/2608.30038)): motion evidence is a
   strong signal, not proof, until hardware key attestation is required.
 - **Real knocks across many phones are not yet measured**; the 150 mm/s² floor is a design value.
-- **The Android client's sign-in still uses its original ed25519 wallet flow** (archived in [`legacy/`](legacy/));
-  moving it to an EVM passkey wallet is next. The Monad demo above runs through the reference client.
+- **The Android app now signs in with MetaMask** (MetaMask Android SDK, EIP-4361 + `personal_sign`, Monad testnet):
+  [`releases/presence-monad-metamask.apk`](releases/presence-monad-metamask.apk). On Monad, missions carry no stake yet.
 - **Testnet only**, development mode (device check bypassed and labelled), test tokens with no value. No customers yet.
 
 ## Run it
