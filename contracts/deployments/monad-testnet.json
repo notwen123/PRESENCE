@@ -1,0 +1,25 @@
+{
+  "chain": "monad-testnet",
+  "chainId": 10143,
+  "rpc": "https://testnet-rpc.monad.xyz",
+  "explorer": "https://testnet.monadvision.com",
+  "PresenceRegistry": {
+    "address": "0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179",
+    "deployTx": "0x0535d84a4c2f4e2f70dfbcfc614f1fe418916d17b7b010ec7b7dfbb48de6e84c",
+    "attestor": "0x5aB3036C7d0bA7043E0BB531374dC6c732eC4954",
+    "sourceVerified": "sourcify exact_match"
+  },
+  "HumanGatedVault": {
+    "address": "0x2AF710af85914DEe0AA89017223638367645f6b4",
+    "deployTx": "0xc2adc0470ea77a50d44becebb91374064ee6e86699faff5516ec0a9b3640eed2",
+    "ownerIdentity": "0x44194fd85563a9537b78aa68ba8f4b055b2b0346eddb2b61eb91dff11d51f488",
+    "agentLimitWei": "10000000000000000",
+    "sourceVerified": "sourcify exact_match"
+  },
+  "demo": {
+    "fundVault": "0x91c13323311418a559079b0b56086115f5cbf8f5ae2dc155304e38da4953945c",
+    "agentWithdrawBlocked": "0xe257dd0baf4eacc1ea37ef191e27f8a75d3f4d548d23e83275977d06961970dc",
+    "presenceRecorded": "0xa0466d10fb58ae4c9fcfbc52360f234bf0b99c49fde663b2e31991fa85348e52",
+    "agentWithdrawAllowed": "0x1d1befe4e297cfef6b0924e3be01f7ac998f0f33dd6117929f53a4868d873bf4"
+  }
+}
