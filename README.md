@@ -89,6 +89,7 @@ one intent (contract, chain, account, recipient, amount, nonce) and expires in 1
 | ⑤ The knock's P-256 signature: **verified on-chain, 0.03 MON sent** | [`0x0881af9d…f9b2`](https://testnet.monadvision.com/tx/0x0881af9d492b67d1edf291bb93bffb2130ff1f2f36eb7f0c5dcde2e6c4a8f9b2) |
 | ⑥ The knock recorded as presence | [`0x3dcaa0a3…0365`](https://testnet.monadvision.com/tx/0x3dcaa0a3185f0a0941aa4d638a58afdf8f3a938fd2753b501adef71f253d0365) |
 | A real FACEDOWN session from the phone app (MetaMask sign-in, 4 knock check-ins) | [`0xe07ccaa1…59c4`](https://testnet.monadvision.com/tx/0xe07ccaa13b6a2d2c381a9a455a7dd99e48509c68e9cb5d2337c5453412c759c4) |
+| A real FACEDOWN session, **Google sign-in via Privy**: the embedded wallet signed in-app, 4 knocks, 0.005 MON sponsor reward paid | [`0x6e8abfc8…3ee1`](https://testnet.monadvision.com/tx/0x6e8abfc84566f1026fb800c37d93a1e87362cd85e866ddf0d0786e3b0ad63ee1) |
 
 The first demo ([`HumanGatedVault`](contracts/src/HumanGatedVault.sol): an agent withdrawal blocked, then allowed after
 a verified session) is still live; all addresses and hashes are in

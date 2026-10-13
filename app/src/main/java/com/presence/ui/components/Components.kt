@@ -354,7 +354,7 @@ private fun DrawScope.tabIcon(t: Tab, color: Color) {
 
 fun shortAddress(a: String) = if (a.length > 10) "${a.take(4)}…${a.takeLast(4)}" else a
 
-fun formatToken(v: Double): String =
-    if (v % 1.0 == 0.0) v.toLong().toString() else "%.2f".format(v).trimEnd('0').trimEnd('.')
+fun formatToken(v: Double): String =  // up to 4 decimals: 0.005 MON must not show as 0.01
+    if (v % 1.0 == 0.0) v.toLong().toString() else "%.4f".format(v).trimEnd('0').trimEnd('.')
 
 fun minutesLabel(seconds: Int): String = if (seconds >= 60) "${seconds / 60} min" else "$seconds sec"
