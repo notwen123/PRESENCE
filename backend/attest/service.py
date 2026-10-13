@@ -433,7 +433,7 @@ class Attest:
                 receipt["monad"] = {"status": "FAILED", "chain": "monad-testnet", "detail": str(e)[:200]}
         monad_ok = receipt.get("monad", {}).get("status") == "CONFIRMED"
         if result.status == "NOT_CONFIGURED" and self.monad:  # Monad-only deployment: the registry is the anchor
-            receipt["settlement"] = settlement = {"status": "CONFIRMED" if monad_ok else "PENDING", "chain": "monad-testnet",
+            receipt["settlement"] = settlement = {"status": "CONFIRMED" if monad_ok else "PENDING", "chain": "monad-testnet", "network": "monad testnet",
                                                   **{k: receipt["monad"].get(k) for k in ("tx", "explorer_url", "registry")}}
         state = "SETTLED" if result.status == "CONFIRMED" or (result.status == "NOT_CONFIGURED" and monad_ok) else "VERIFIED"
         with self.lock, self.db:
