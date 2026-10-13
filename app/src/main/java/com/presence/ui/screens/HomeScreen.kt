@@ -1016,7 +1016,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ProfileTab(
             Hairline()
             KeyValue("Mode", it.mode.replaceFirstChar { c -> c.uppercase() })
             Hairline()
-            KeyValue("Network", it.network.replaceFirstChar { c -> c.uppercase() }, icon = R.drawable.solana_mark)
+            KeyValue("Network", it.network.replaceFirstChar { c -> c.uppercase() }, icon = R.drawable.monad_mark)
             Hairline()
             KeyValue("Device check", if (it.mode == "development") "Bypassed (development)" else "Required")
         }

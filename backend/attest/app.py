@@ -120,7 +120,7 @@ def create_app(service: Attest | None = None) -> FastAPI:
         # Without a token pool (Monad-only deployment) only missions with no stake can run.
         staking = not isinstance(svc.attestor, UnconfiguredAttestor)
         # No token pool, no token reward: never advertise a payout the deployment can't make.
-        reward = lambda m: {**m.public()["reward"], "symbol": svc.symbol(m)} if staking else {**m.public()["reward"], "token": 0}
+        reward = lambda m: {**m.public()["reward"], "symbol": svc.symbol(m)} if staking else {**m.public()["reward"], "token": 0, "symbol": "TEST"}
         return [{**m.public(), "reward": reward(m)} for m in svc.missions.values() if staking or not m.stake_token]
 
     @app.post("/session")

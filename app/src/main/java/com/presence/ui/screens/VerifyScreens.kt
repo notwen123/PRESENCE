@@ -209,7 +209,7 @@ fun ReceiptScreen(r: Screen.Result, history: List<com.presence.attest.HistoryIte
                 "NOT_CONFIGURED" -> "Not configured"
                 "PENDING" -> "Pending"
                 else -> "Failed"
-            }, done = anchored, icon = R.drawable.solana_mark)
+            }, done = anchored, icon = R.drawable.monad_mark)
             Hairline()
             ReceiptStep(if (rc.reward.stake > 0) "Stake returned" else "Reward paid", when {
                 rc.reward.stake > 0 && paid -> "${formatToken(rc.reward.stake)} $symbol" +
