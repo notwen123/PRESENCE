@@ -1,28 +1,29 @@
-<p align="center"><img src="docs/img/banner.png" alt="FACEDOWN: commit, put it down, prove it. Built on Solana, made for Seeker." width="100%"></p>
+<p align="center"><img src="docs/img/banner.png" alt="FACEDOWN: commit, put it down, prove it. Live on Monad testnet. Proof of human for AI agents." width="100%"></p>
 
 <p align="center">
   <a href="https://youtu.be/TL2G2HT28qY"><b>Film (3 min)</b></a> ·
   <a href="docs/whitepaper/presence_whitepaper.pdf"><b>Whitepaper</b></a> ·
-  <a href="#5-live-proof-on-solana-devnet"><b>Devnet proof</b></a> ·
-  <a href="#6-why-solana"><b>Why Solana</b></a> ·
+  <a href="#monad-metropolis-submission"><b>Monad submission</b></a> ·
+  <a href="#presence-on-monad-proof-of-a-human-for-contracts-and-ai-agents"><b>Live on Monad</b></a> ·
+  <a href="#6-why-monad"><b>Why Monad</b></a> ·
   <a href="#8-the-engine-presence"><b>Architecture</b></a> ·
   <a href="#11-run-it"><b>Run it</b></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Solana-devnet%20live-14F195?logo=solana&logoColor=white&labelColor=1D2B24" alt="Solana devnet live">
-  <img src="https://img.shields.io/badge/Seeker-made%20for-1F9D55?labelColor=1D2B24" alt="Made for Seeker">
+  <img src="https://img.shields.io/badge/Monad-testnet%20live-6E54FF?labelColor=1D2B24" alt="Monad testnet live">
+  <img src="https://img.shields.io/badge/track-Trust%2C%20Identity%20%26%20AI%20Infra-6E54FF?labelColor=1D2B24" alt="Track: Trust, Identity and AI Infrastructure">
+  <img src="https://img.shields.io/badge/Solidity-Foundry-363636?labelColor=1D2B24" alt="Solidity, Foundry">
   <img src="https://img.shields.io/badge/Android-Kotlin%20%C2%B7%20Compose-3DDC84?logo=android&logoColor=white&labelColor=1D2B24" alt="Android Kotlin Compose">
-  <img src="https://img.shields.io/badge/Anchor-program-512DA8?labelColor=1D2B24" alt="Anchor program">
-  <img src="https://img.shields.io/badge/tests-50%20backend%20%C2%B7%2010%20Android-1F9D55?labelColor=1D2B24" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-53%20backend%20%C2%B7%205%20contract%20%C2%B7%2010%20Android-1F9D55?labelColor=1D2B24" alt="Tests">
 </p>
 
 **AI agents can now operate phones, so any reward that checks for taps can be farmed.** **PRESENCE** proves that a
 real person physically did a process on a real device: the session is timed by our server, every check-in must be a
 physical knock the accelerometer feels, and claims are bound to one device (the Seeker Genesis Token). It is cheap
-enough to attest on **Solana**: one transaction, 0.00144 SOL measured on devnet. **FACEDOWN** is the first consumer
+enough to attest on-chain: one transaction on **Monad** (161,016 gas, 0.3 s blocks, measured on testnet). **FACEDOWN** is the first consumer
 app and the daily-habit engine that generates labelled human sessions: you book a session, lay the phone face-down,
-knock on its back when it buzzes, and the verified result is written to Solana in the same transaction that pays you.
+knock on its back when it buzzes; the verified result is recorded in the PRESENCE registry on Monad, and paid out on Solana devnet.
 
 <p align="center">
   <a href="https://youtu.be/TL2G2HT28qY"><img src="docs/img/film.jpg" width="80%" alt="Watch the FACEDOWN film on YouTube"></a><br>
@@ -295,33 +296,30 @@ about its own sensors beats the check today. Hardware attestation is the fix (P4
 | Cost of one verified session on Solana | **1 transaction, 1 signature, 27–30k compute units, 0.00144 SOL**, paid by the operator, not the user |
 | Backend tests | 50 pass (2 skipped): protocol, replay, policy, physical evidence, stakes, No-Loss, cool-down, freezes, squads, daily reward cap, streak repair, RPC backoff |
 
-## 6. Why Solana
+## 6. Why Monad
 
-<p align="center"><img src="docs/img/solana.svg" width="72" alt="Solana logo"></p>
+PRESENCE needs a chain where a proof of presence is cheap to write, fast to finalise, and readable by **any** contract,
+especially the EVM wallets and agent frameworks that AI agents already use. Measured on Monad testnet, 13 Oct 2026:
 
-<table><tr>
-<td width="45%"><img src="docs/img/gif/solana.gif" alt="Why Solana: proof on chain, real humans, no new token, built for Seeker"></td>
-<td width="55%" valign="top">
+| Measured | Result |
+|---|---|
+| Recording one verified session (`record()`) | **1 transaction, 161,016 gas**, about 0.0164 MON at the testnet gas price of 102 gwei |
+| Block time, averaged over 1,000 blocks | **0.304 s** |
+| Contracts | `PresenceRegistry` and `HumanGatedVault`, both source-verified (Sourcify exact match) |
 
-FACEDOWN only works on a chain where **the phone itself is part of the network**. On Solana it is:
+- **Composable by default.** It's the EVM, so any wallet, vault, quest or agent framework can call
+  `isPresent(identity, minAssurance, maxAgeDays)` with no SDK. `HumanGatedVault` is about 50 lines.
+- **Fast enough to sit in the loop.** With sub-second blocks, a presence proof can gate an agent's next action
+  instead of a batch job hours later.
+- **Agents live here.** Embedded and agent wallets on Monad (Privy, Dynamic, MetaMask Agent Wallet) are exactly the
+  accounts that need a "was a human actually here?" check before high-value actions.
+- **Privacy.** The registry stores only SHA-256 hashes of the device identity and the mission, plus a 32-byte evidence
+  root. Raw sensor data never leaves the phone.
 
-- **Seeker gives the phone an on-chain identity.** The Seeker Genesis Token is a Token-2022 NFT issued to each
-  Seeker device. We key claims to it, so **one device = one claim**, however many wallets a farmer creates.
-- **The wallet lives in the OS.** Mobile Wallet Adapter lets the app ask Solflare (or any MWA wallet) to sign in and
-  stake without leaving FACEDOWN. We tested it with the real Solflare app.
-- **Proof and payout in one transaction.** `record_attestation` + the SPL transfer land together, 27–30k compute
-  units, **0.00144 SOL** all-in (measured). Cheap enough to attest a **2-minute** session, and atomic: no paid-but-not-
-  recorded state.
-- **A PDA is a free "only once" lock.** The attestation address is derived from (profile, mission, day, claim index).
-  It can be created once, ever, so double-claiming is impossible by construction, not by a database check.
-- **SKR gives the token a job.** Stake it, lock it, burn half of every streak freeze, and (roadmap) stake it behind
-  independent Guardians that co-sign attestations, the same model Solana Mobile uses for its own Guardians.
-- **The Solana dApp Store allows what Play restricts.** Urge Catcher is an accessibility service: allowed on the dApp
-  Store, restricted on Google Play.
-- **Composable proof.** Any airdrop, quest or campaign can read `DailyAttestation` accounts or call
-  [`verifyPresence()`](docs/integration.md) to require *real human sessions*.
-
-</td></tr></table>
+**Where Solana still fits.** The FACEDOWN app was first built for Solana Mobile: its wallet (Solflare through Mobile
+Wallet Adapter), SKR-TEST rewards and the Seeker Genesis Token device identity run on Solana devnet today (section 5).
+The ATTEST server now records every verified session on Monad as well, so the same human proof is readable from
+Monad contracts.
 
 ## 7. SKR: a reason to hold and spend it, not just pass it through
 
