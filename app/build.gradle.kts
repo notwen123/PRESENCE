@@ -91,8 +91,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-    implementation("io.ktor:ktor-client-core:2.3.12")
-    implementation("io.ktor:ktor-client-android:2.3.12")
+    implementation("io.ktor:ktor-client-core:3.0.3")
+    implementation("io.ktor:ktor-client-android:3.0.3")
 
     implementation("io.github.funkatronics:multimult:0.2.0")
     implementation("io.privy:privy-core:0.16.0")

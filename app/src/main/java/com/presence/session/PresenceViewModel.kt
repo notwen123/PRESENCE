@@ -97,7 +97,7 @@ class PresenceViewModel @Inject constructor(
     fun connect(sender: ActivityResultSender) = viewModelScope.launch {
         guarded {
             val account = wallet.connect(sender)
-            _state.update { it.copy(wallet = account) }
+            _state.update { it.copy(wallet = account, walletWelcome = true) }
             // Off mainnet, give a fresh test wallet fee SOL and test tokens so it can stake (server-side guarded).
             ensureTestFunds(account.address)
             refresh()
@@ -181,6 +181,8 @@ class PresenceViewModel @Inject constructor(
             _state.update { it.copy(message = detail?.replaceFirstChar { c -> c.uppercase() } ?: reasonMessage("NETWORK_ERROR")) }
         }
     }
+
+    fun dismissWalletWelcome() = _state.update { it.copy(walletWelcome = false) }
 
     fun disconnect() = viewModelScope.launch {
         wallet.disconnect()
@@ -410,6 +412,7 @@ class PresenceViewModel @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            Log.w("PRESENCE", "action failed: ${e::class.simpleName}: ${e.message}")
             _state.update { it.copy(busy = false, message = reasonMessage((e as? AttestException)?.reason ?: "CLIENT_ERROR")) }
         }
     }

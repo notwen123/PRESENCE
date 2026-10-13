@@ -384,7 +384,7 @@ games leave players at a loss (Gao)."
   strong signal, not proof, until hardware key attestation is required.
 - **Real knocks across many phones are not yet measured**; the 150 mm/s² floor is a design value.
 - **The Android app now signs in with MetaMask** (MetaMask Android SDK, EIP-4361 + `personal_sign`, Monad testnet):
-  [`releases/presence-monad-metamask.apk`](releases/presence-monad-metamask.apk). On Monad, missions carry no stake yet.
+  [`releases/presence-monad.apk`](releases/presence-monad.apk). On Monad, missions carry no stake yet.
 - **Testnet only**, development mode (device check bypassed and labelled), test tokens with no value. No customers yet.
 
 ## Run it

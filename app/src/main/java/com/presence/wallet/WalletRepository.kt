@@ -66,7 +66,7 @@ class WalletRepository @Inject constructor(
     private val privy: Privy? by lazy {
         BuildConfig.PRIVY_APP_ID.takeIf { it.isNotBlank() }?.let {
             Privy.init(context.applicationContext, PrivyConfig(appId = it, appClientId = BuildConfig.PRIVY_CLIENT_ID,
-                logLevel = PrivyLogLevel.NONE))
+                logLevel = PrivyLogLevel.ERROR))
         }
     }
     private val usePrivy get() = BuildConfig.PRIVY_APP_ID.isNotBlank()

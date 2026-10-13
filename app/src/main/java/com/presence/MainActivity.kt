@@ -172,6 +172,7 @@ fun ClockInRoot(sender: ActivityResultSender, pendingMission: MutableState<Strin
                 is Screen.Failed -> FailedScreen(screen, onRetry = vm::openMission, onHome = vm::home)
             }
         }
+        if (s.walletWelcome) s.wallet?.let { com.presence.ui.components.WalletReadyOverlay(it, onDone = vm::dismissWalletWelcome) }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 72.dp)) {
             Snackbar(it, containerColor = BrandColors.Ink, contentColor = BrandColors.White)
         }

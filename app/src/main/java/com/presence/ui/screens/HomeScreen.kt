@@ -195,6 +195,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.Today(
     val p = s.profile
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
         SectionLabel(greeting())
+        s.wallet?.let { Gap(8); com.presence.ui.components.WalletChip(it) }
         Gap(8)
         // Pip says where today stands; the pose follows the real state.
         val streak = p?.streak ?: 0
@@ -282,7 +283,7 @@ private fun CommitmentCard(m: MissionPolicy, s: UiState, onConnect: () -> Unit, 
         Text(reward, style = MaterialTheme.typography.bodyMedium, color = BrandColors.White.copy(alpha = 0.8f))
         Gap(20)
         when {
-            s.wallet == null -> PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
+            s.wallet == null -> PrimaryButton(if (com.presence.BuildConfig.PRIVY_APP_ID.isNotBlank()) "Continue with Google" else "Connect wallet", loading = s.busy, onClick = onConnect)
             used >= m.maxClaimsPerDay -> Text("✓  Done for today. Pick another length on Focus.",
                 style = MaterialTheme.typography.titleMedium, color = BrandColors.White)
             else -> PrimaryButton("Go facedown  →", enabled = !s.busy) { onOpen(m) }
@@ -297,8 +298,8 @@ private fun CommitAction(s: UiState, m: MissionPolicy?, onConnect: () -> Unit, o
     val used = s.profile?.claimsToday?.get(m.missionId) ?: 0
     when {
         s.wallet == null -> {
-            PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
-            Text("Uses MetaMask on Monad testnet. FACEDOWN never sees your keys.",
+            PrimaryButton(if (com.presence.BuildConfig.PRIVY_APP_ID.isNotBlank()) "Continue with Google" else "Connect wallet", loading = s.busy, onClick = onConnect)
+            Text(if (com.presence.BuildConfig.PRIVY_APP_ID.isNotBlank()) "Creates your own Monad wallet with Privy. No seed phrase, no extra app." else "Uses MetaMask on Monad testnet. FACEDOWN never sees your keys.",
                 style = MaterialTheme.typography.bodyMedium, color = SemanticColors.TertiaryText,
                 modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.related))
         }
@@ -973,7 +974,7 @@ private fun androidx.compose.foundation.layout.ColumnScope.ProfileTab(
             }
         }
         Gap(16)
-        if (s.wallet == null) PrimaryButton("Connect wallet", loading = s.busy, onClick = onConnect)
+        if (s.wallet == null) PrimaryButton(if (com.presence.BuildConfig.PRIVY_APP_ID.isNotBlank()) "Continue with Google" else "Connect wallet", loading = s.busy, onClick = onConnect)
         else SecondaryButton("Disconnect wallet", onClick = onDisconnect)
     }
 

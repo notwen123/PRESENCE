@@ -57,6 +57,8 @@ data class UiState(
     val facedownNow: Int = 0,
     val busy: Boolean = false,
     val message: String? = null,
+    /** True once, right after sign-in created the wallet: shows the "wallet ready" celebration. */
+    val walletWelcome: Boolean = false,
 )
 
 /** User-facing copy per failure reason; technical detail stays in logs / the evidence view. */
