@@ -7,14 +7,20 @@
  h1{font-size:24px;margin:0 0 8px} p{color:#4b5563} .ok{color:#15803d;font-weight:700} .err{color:#b42318}
  button{background:#15803d;color:#fff;border:0;border-radius:14px;padding:14px 22px;font-size:17px;font-weight:700;margin-top:10px}
 </style></head><body><div class="c">
-<h1 id="t">FACEDOWN on Monad</h1><p id="m">Connecting to MetaMask…</p><button id="b" style="display:none">Try again</button>
+<h1 id="t">FACEDOWN on Monad</h1><p id="m">Connecting to MetaMask…</p><button id="b">Connect MetaMask</button>
 </div><script>
 const q = new URLSearchParams(location.search), T = document.getElementById("t"), M = document.getElementById("m"), B = document.getElementById("b");
 const say = (t, m, cls) => { T.textContent = t; M.textContent = m; M.className = cls || ""; };
+const ready = () => new Promise(res => {
+  if (window.ethereum) return res(true);
+  window.addEventListener("ethereum#initialized", () => res(true), { once: true });
+  let n = 0; const t = setInterval(() => { if (window.ethereum || ++n > 50) { clearInterval(t); res(!!window.ethereum); } }, 100);
+});
 async function run() {
   B.style.display = "none";
   try {
-    if (!window.ethereum) return say("Open in MetaMask", "This page must be opened inside the MetaMask app browser.", "err");
+    say("FACEDOWN on Monad", "Connecting to MetaMask…");
+    if (!(await ready())) { B.style.display = "inline-block"; return say("Open in MetaMask", "This page must be opened inside the MetaMask app browser.", "err"); }
     const [account] = await ethereum.request({ method: "eth_requestAccounts" });
     let message, post;
     if (q.get("code")) {
@@ -33,5 +39,5 @@ async function run() {
     say("Done ✓", "Go back to FACEDOWN. It continues by itself.", "ok");
   } catch (e) { say("Not signed", e.message || String(e), "err"); B.style.display = "inline-block"; }
 }
-B.onclick = run; run();
+B.onclick = run; ready().then(ok => ok ? run() : say("Tap the button", "Tap Connect MetaMask to continue."));
 </script></body></html>
