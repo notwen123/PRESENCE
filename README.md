@@ -44,7 +44,7 @@ and nothing holds you to the promise you made yourself. We built the thing that 
 
 ### Judges: try it in 60 seconds, no install
 
-Open **[facedown-attest.onrender.com/agent](https://facedown-attest.onrender.com/agent) on your phone's browser** (Chrome on Android; the APK is optional):
+Open **[presence-h7uy.onrender.com/agent](https://presence-h7uy.onrender.com/agent) on your phone's browser** (Chrome on Android; the APK is optional):
 
 1. **Set up this phone.** The browser makes a P-256 key that never leaves the device and binds it to `AgentGuard`.
 2. **Agent sends 0.005 MON.** Under the 0.01 limit: it goes through with no human.
