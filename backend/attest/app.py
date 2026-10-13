@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from . import identity, mission_generator, store
@@ -102,6 +102,11 @@ def create_app(service: Attest | None = None) -> FastAPI:
         return {"ok": True, "mode": "development" if svc.dev_mode else "production",
                 "network": svc.network, "settlement": type(svc.attestor).__name__,
                 "physical": "enforced" if svc.enforce_physical else "reported"}
+
+    @app.get("/monad", include_in_schema=False)
+    def monad_page():
+        """Live verifier for PRESENCE on Monad: reads the registry and the agent-guard vault in the browser."""
+        return FileResponse(Path(__file__).parent / "static" / "monad.html")
 
     @app.get("/missions")
     def missions():

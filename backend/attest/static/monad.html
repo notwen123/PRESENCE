@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRESENCE on Monad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root { --ink:#111827; --mute:#5b6570; --green:#15803d; --pale:#ecf7ef; --line:#cfe6d6; --bg:#f4f8f5; --card:#fff; --red:#b42318; --purple:#6e54ff; }
+  * { box-sizing: border-box }
+  body { margin:0; background:radial-gradient(1200px 600px at 60% 0%, #fff, var(--bg)); color:var(--ink); font:16px/1.5 Inter, system-ui, sans-serif }
+  main { max-width:1080px; margin:0 auto; padding:40px 20px 60px }
+  h1 { font:800 clamp(34px,6vw,58px)/1.05 Manrope, sans-serif; margin:8px 0 10px; letter-spacing:-.02em }
+  h1 .dot { color:var(--green) } h2 { font:800 22px Manrope, sans-serif; margin:0 0 12px }
+  .kicker { font:800 13px Manrope; letter-spacing:.12em; color:var(--purple); text-transform:uppercase }
+  .lede { color:var(--mute); font-size:19px; max-width:760px }
+  .grid { display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); margin-top:26px }
+  .card { background:var(--card); border:1.5px solid var(--line); border-radius:22px; padding:22px; box-shadow:0 8px 28px rgba(17,24,39,.05) }
+  .mono { font:500 13px 'JetBrains Mono', monospace; word-break:break-all }
+  input { width:100%; padding:12px 14px; border:1.5px solid var(--line); border-radius:12px; font:500 14px 'JetBrains Mono', monospace }
+  button { margin-top:10px; background:var(--green); color:#fff; border:0; border-radius:12px; padding:11px 18px; font:700 15px Manrope; cursor:pointer }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid #eef2ef }
+  .row:last-child { border:0 } .row span:first-child { color:var(--mute) }
+  .pill { display:inline-block; padding:4px 12px; border-radius:999px; font:800 13px Manrope }
+  .yes { background:#dcfce7; color:var(--green) } .no { background:#fee4e2; color:var(--red) }
+  ol { padding-left:20px; margin:0 } li { margin:8px 0 }
+  a { color:var(--green) } .small { font-size:13px; color:var(--mute) }
+</style>
+</head>
+<body>
+<main>
+  <div class="kicker">Monad testnet · Trust, Identity &amp; AI Infrastructure</div>
+  <h1>PRESENCE<span class="dot">.</span> Proof a human was here.</h1>
+  <p class="lede">AI agents can now operate phones, so anything that checks for taps can be farmed. PRESENCE verifies that a
+    real person physically completed a session on a real device (server-timed, hash-chained, knock check-ins the
+    accelerometer must feel) and records it once on Monad. Any contract can ask <code>isPresent()</code>.</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Look up a presence identity</h2>
+      <p class="small">Paste an identity hash, or a device id (<code>dev:&lt;wallet&gt;</code> in development mode,
+        a Seeker Genesis Token mint in production). It is hashed in your browser, the same way the server does.</p>
+      <input id="q" value="0x44194fd85563a9537b78aa68ba8f4b055b2b0346eddb2b61eb91dff11d51f488">
+      <button id="go">Check on Monad</button>
+      <div id="out" style="margin-top:14px"></div>
+    </section>
+
+    <section class="card">
+      <h2>HumanGatedVault (live)</h2>
+      <p class="small">An agent can withdraw up to 0.01 MON alone. Anything larger needs its human's fresh presence proof.</p>
+      <div id="vault">Loading…</div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:18px">
+    <h2>The demo, on-chain</h2>
+    <ol>
+      <li>Agent tries to withdraw 0.03 MON with no presence proof: <b>blocked</b> (<code>HumanPresenceRequired</code>) ·
+        <a target="_blank" href="https://testnet.monadvision.com/tx/0xe257dd0baf4eacc1ea37ef191e27f8a75d3f4d548d23e83275977d06961970dc">tx</a></li>
+      <li>A real 2-minute FACEDOWN session is verified by ATTEST and recorded in the registry ·
+        <a target="_blank" href="https://testnet.monadvision.com/tx/0xa0466d10fb58ae4c9fcfbc52360f234bf0b99c49fde663b2e31991fa85348e52">tx</a></li>
+      <li>Same agent, same 0.03 MON: <b>allowed</b> ·
+        <a target="_blank" href="https://testnet.monadvision.com/tx/0x1d1befe4e297cfef6b0924e3be01f7ac998f0f33dd6117929f53a4868d873bf4">tx</a></li>
+    </ol>
+    <p class="small" style="margin-top:14px">Registry
+      <a class="mono" target="_blank" href="https://testnet.monadvision.com/address/0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179">0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179</a>
+      · Vault <a class="mono" target="_blank" href="https://testnet.monadvision.com/address/0x2AF710af85914DEe0AA89017223638367645f6b4">0x2AF710af85914DEe0AA89017223638367645f6b4</a>
+      · both source-verified. Development build on testnet.</p>
+  </section>
+</main>
+<script type="module">
+  import { createPublicClient, http, defineChain, formatEther } from "https://esm.sh/viem@2.21.0";
+  const monad = defineChain({ id: 10143, name: "Monad Testnet", nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+    rpcUrls: { default: { http: ["https://testnet-rpc.monad.xyz"] } } });
+  const client = createPublicClient({ chain: monad, transport: http() });
+  const REG = "0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179", VAULT = "0x2AF710af85914DEe0AA89017223638367645f6b4";
+  const regAbi = [
+    { name: "isPresent", type: "function", stateMutability: "view", inputs: [{ type: "bytes32" }, { type: "uint8" }, { type: "uint32" }], outputs: [{ type: "bool" }] },
+    { name: "today", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "int64" }] },
+    { name: "profileOf", type: "function", stateMutability: "view", inputs: [{ type: "bytes32" }], outputs: [{ type: "tuple", components: [
+      { name: "streak", type: "uint32" }, { name: "bestStreak", type: "uint32" }, { name: "lastDay", type: "int64" },
+      { name: "attestations", type: "uint64" }, { name: "reputation", type: "uint64" }, { name: "lastAssurance", type: "uint8" }] }] }];
+  const vaultAbi = [{ name: "humanPresent", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "bool" }] },
+    { name: "limit", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] }];
+  const pill = (ok, y, n) => `<span class="pill ${ok ? "yes" : "no"}">${ok ? y : n}</span>`;
+  const row = (k, v) => `<div class="row"><span>${k}</span><span>${v}</span></div>`;
+
+  async function toIdentity(s) {
+    s = s.trim();
+    if (/^0x[0-9a-fA-F]{64}$/.test(s)) return s;
+    const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+    return "0x" + [...new Uint8Array(d)].map(b => b.toString(16).padStart(2, "0")).join("");
+  }
+  async function lookup() {
+    const out = document.getElementById("out"); out.textContent = "Reading Monad…";
+    try {
+      const id = await toIdentity(document.getElementById("q").value);
+      const [p, present, today] = await Promise.all([
+        client.readContract({ address: REG, abi: regAbi, functionName: "profileOf", args: [id] }),
+        client.readContract({ address: REG, abi: regAbi, functionName: "isPresent", args: [id, 2, 1] }),
+        client.readContract({ address: REG, abi: regAbi, functionName: "today" })]);
+      out.innerHTML = row("identity", `<span class="mono">${id.slice(0, 18)}…</span>`) +
+        row("present (P2, last 24 h)", pill(present, "YES", "NO")) +
+        row("verified sessions", p.attestations) + row("streak / best", `${p.streak} / ${p.bestStreak}`) +
+        row("reputation", p.reputation) +
+        row("last proof", p.attestations > 0n ? `UTC day ${p.lastDay} (today ${today})` : "never");
+    } catch (e) { out.textContent = "Could not read Monad: " + (e.shortMessage || e.message); }
+  }
+  async function vault() {
+    const [h, lim, bal] = await Promise.all([
+      client.readContract({ address: VAULT, abi: vaultAbi, functionName: "humanPresent" }),
+      client.readContract({ address: VAULT, abi: vaultAbi, functionName: "limit" }),
+      client.getBalance({ address: VAULT })]);
+    document.getElementById("vault").innerHTML = row("owner's human present now", pill(h, "YES", "NO")) +
+      row("agent limit without proof", `${formatEther(lim)} MON`) + row("vault balance", `${formatEther(bal)} MON`) +
+      `<p class="small" style="margin-top:10px">Presence proofs expire: after a day without a verified session the vault locks large withdrawals again.</p>`;
+  }
+  document.getElementById("go").onclick = lookup;
+  lookup(); vault().catch(e => document.getElementById("vault").textContent = "Could not read Monad: " + e.message);
+</script>
+</body>
+</html>
