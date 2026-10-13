@@ -118,7 +118,8 @@ def create_app(service: Attest | None = None) -> FastAPI:
         return {"ok": True, "mode": "development" if svc.dev_mode else "production",
                 "network": "monad testnet" if monad_only else svc.network, "settlement": type(svc.attestor).__name__,
                 "physical": "enforced" if svc.enforce_physical else "reported",
-                "anchor": "monad-testnet" if svc.monad else None}
+                "anchor": "monad-testnet" if svc.monad else None, "freeze_price": svc.FREEZE_PRICE,
+                "freeze_burn": svc.FREEZE_PRICE * svc.FREEZE_BURN}
 
     if os.environ.get("AGENT_GUARD") and (os.environ.get("AGENT_KEY") or os.environ.get("PRIVY_AGENT_WALLET")) \
             and os.environ.get("MONAD_ATTESTOR_KEY"):

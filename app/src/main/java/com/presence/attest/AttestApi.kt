@@ -25,7 +25,9 @@ class AttestException(val reason: String, val detail: String = "") : Exception("
 
 @Serializable data class Health(val mode: String, val network: String, val settlement: String,
                                /** "enforced" or "reported" (development: emulators have no real motion). */
-                               val physical: String = "enforced")
+                               val physical: String = "enforced",
+                               @SerialName("freeze_price") val freezePrice: Double = 2.0,
+                               @SerialName("freeze_burn") val freezeBurn: Double = 1.0)
 
 @Serializable
 data class Reward(

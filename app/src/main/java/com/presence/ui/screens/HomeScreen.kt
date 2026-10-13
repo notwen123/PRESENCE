@@ -847,13 +847,15 @@ private fun FreezeTerms(s: UiState, onBuy: () -> Unit, onCancel: () -> Unit) = C
     Text("Streak freeze", style = MaterialTheme.typography.headlineSmall, color = SemanticColors.PrimaryText)
     Gap(12)
     Group {
-        KeyValue("Price", "2 $symbol")
+        val price = s.health?.freezePrice ?: 2.0
+        val burn = s.health?.freezeBurn ?: (price / 2)
+        KeyValue("Price", "${formatToken(price)} $symbol")
         Hairline()
         KeyValue("What it does", "Covers 1 missed day")
         Hairline()
-        KeyValue("Burned on-chain", "1 $symbol")
+        KeyValue("Burned on-chain", "${formatToken(burn)} $symbol")
         Hairline()
-        KeyValue("Kept by FACEDOWN", "1 $symbol")
+        KeyValue("Kept by FACEDOWN", "${formatToken(price - burn)} $symbol")
         Hairline()
         KeyValue("You have", "${s.profile?.streakFreezes ?: 0}")
     }
