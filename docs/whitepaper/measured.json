@@ -1,0 +1,71 @@
+{
+ "sessions_total": 56,
+ "wallets": 20,
+ "states": {
+  "ACTIVE": 3,
+  "CREATED": 25,
+  "REJECTED": 9,
+  "SETTLED": 19
+ },
+ "checkpoints": 119,
+ "claims": 19,
+ "stakes": 31,
+ "sponsor_deposits": 11,
+ "freeze_orders": 3,
+ "squads": 5,
+ "squad_members": 7,
+ "faucet_grants": 21,
+ "stake_status": {
+  "FORFEITED": 1,
+  "ISSUED": 13,
+  "LOCKED": 7,
+  "RETURNED": 10
+ },
+ "window": [
+  "2026-10-09 02:51:14",
+  "2026-10-12 07:53:08"
+ ],
+ "reject_causes": {
+  "left foreground": 7,
+  "missed check-ins": 2
+ },
+ "answers": 95,
+ "answer_ms": {
+  "min": 344,
+  "median": 3068,
+  "max": 9276,
+  "under_floor": 0
+ },
+ "injected_taps": {
+  "n": 30,
+  "min": 20,
+  "median": 35.5,
+  "max": 734,
+  "below_floor": 29
+ },
+ "emulator_knocks": {
+  "n": 26
+ },
+ "risk_sessions": 22,
+ "risk_max": 0.0,
+ "sigma_min": 125,
+ "sigma_median": 960,
+ "latency_us": {
+  "4": {
+   "p50": 16.4,
+   "p99": 37.9
+  },
+  "16": {
+   "p50": 31.4,
+   "p99": 56.3
+  },
+  "64": {
+   "p50": 85.8,
+   "p99": 191.8
+  },
+  "256": {
+   "p50": 259.5,
+   "p99": 437.3
+  }
+ }
+}

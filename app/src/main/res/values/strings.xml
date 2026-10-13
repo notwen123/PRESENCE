@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FACEDOWN</string>
+    <string name="urge_catcher_description">Urge Catcher shows a short pause before the apps you picked in FACEDOWN, so you can go facedown for 10 minutes instead. It only sees which app is opening; it never reads what is on the screen.</string>
+</resources>

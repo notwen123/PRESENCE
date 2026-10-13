@@ -1,0 +1,27 @@
+# Render blueprint for the ATTEST server (Solana devnet, development mode: Seeker check bypassed and labelled).
+# Render dashboard -> New -> Blueprint -> this repo. Paste the devnet attestor keypair JSON into ATTESTOR_KEYPAIR_JSON.
+services:
+  - type: web
+    name: facedown-attest
+    runtime: docker
+    plan: free
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: ATTEST_DEV_MODE
+        value: "true"
+      - key: SOLANA_NETWORK
+        value: devnet
+      - key: SOLANA_RPC_URL
+        value: https://api.devnet.solana.com
+      - key: PROGRAM_ID
+        value: CFZsFPtvwo5KDenV3qgorroaRmT7NuYsfPnd4avFS2cT
+      - key: REWARD_MINT
+        value: GGqPuCZvbfmVuaUDU5AHqSxrMSbM9L3qJMP1Q7p7myRU
+      - key: REWARD_DECIMALS
+        value: "6"
+      - key: ATTEST_DB
+        value: /tmp/attest.db
+      - key: ATTESTOR_KEYPAIR_JSON
+        sync: false

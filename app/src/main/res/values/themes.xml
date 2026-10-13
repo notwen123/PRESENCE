@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ClockIn" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/white</item>
+        <item name="android:colorAccent">@color/green</item>
+    </style>
+
+    <!-- Launch screen: matches the first frame (white), so the hand-off doesn't flash. -->
+    <style name="Theme.ClockIn.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/white</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_mascot</item>
+        <item name="postSplashScreenTheme">@style/Theme.ClockIn</item>
+    </style>
+</resources>
