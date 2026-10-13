@@ -36,7 +36,10 @@ async function run() {
     const signature = await ethereum.request({ method: "personal_sign", params: [message, account] });
     const r = await post(signature);
     if (!r.ok) throw new Error((await r.json()).detail || r.status);
-    say("Done ✓", "Go back to FACEDOWN. It continues by itself.", "ok");
+    say("Done ✓", "Returning to FACEDOWN…", "ok");
+    const back = "intent://return#Intent;scheme=facedown;package=com.presence;end";
+    B.textContent = "Back to FACEDOWN"; B.onclick = () => { location.href = back; }; B.style.display = "inline-block";
+    setTimeout(() => { location.href = back; }, 600);
   } catch (e) { say("Not signed", e.message || String(e), "err"); B.style.display = "inline-block"; }
 }
 B.onclick = run; ready().then(ok => ok ? run() : say("Tap the button", "Tap Connect MetaMask to continue."));
