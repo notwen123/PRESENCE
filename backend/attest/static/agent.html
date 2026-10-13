@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knock to Approve · PRESENCE on Monad</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+<style>
+ :root{--ink:#111827;--mute:#5b6570;--green:#15803d;--pale:#ecf7ef;--line:#cfe6d6;--purple:#6e54ff;--red:#b42318}
+ *{box-sizing:border-box} body{margin:0;background:#f4f8f5;color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif}
+ main{max-width:560px;margin:0 auto;padding:22px 16px 60px}
+ .k{font:800 12px Manrope;letter-spacing:.12em;color:var(--purple);text-transform:uppercase}
+ h1{font:800 30px/1.1 Manrope;margin:6px 0 8px} h1 span{color:var(--green)}
+ .lede{color:var(--mute);margin:0 0 18px}
+ .card{background:#fff;border:1.5px solid var(--line);border-radius:20px;padding:18px;margin:12px 0}
+ .step{font:800 13px Manrope;color:var(--green);letter-spacing:.06em}
+ h2{font:800 19px Manrope;margin:4px 0 8px}
+ button{width:100%;border:0;border-radius:14px;padding:14px;font:700 16px Manrope;cursor:pointer;margin-top:8px}
+ .go{background:var(--green);color:#fff} .alt{background:var(--pale);color:var(--green)} button:disabled{opacity:.45}
+ .intent{background:#111827;color:#fff;border-radius:18px;padding:18px;margin-top:10px}
+ .intent .amt{font:800 30px Manrope} .intent .to{font:500 14px ui-monospace,monospace;color:#cbd5e1}
+ .knock{font:800 18px Manrope;color:#bef264;margin-top:8px} .cd{font:700 14px Manrope;color:#fcd34d}
+ .ok{color:var(--green);font-weight:700} .err{color:var(--red);font-weight:600} .small{font-size:13px;color:var(--mute)}
+ a{color:var(--green);word-break:break-all} .row{display:flex;justify-content:space-between;gap:10px;font-size:14px;padding:3px 0}
+ .meter{height:8px;background:#e5efe8;border-radius:8px;overflow:hidden;margin:8px 0} .meter i{display:block;height:100%;background:var(--green);width:0}
+</style></head><body><main>
+<div class="k">PRESENCE on Monad · Trust, Identity &amp; AI</div>
+<h1>Knock to <span>Approve</span></h1>
+<p class="lede">An AI agent can spend a little on its own. Anything bigger waits for its human to physically knock on their phone.
+The phone signs that exact transaction, and the Monad contract checks the signature itself.</p>
+
+<div class="card" id="c1"><div class="step">STEP 1</div><h2>Set up this phone</h2>
+ <div id="dev" class="small">Creates a P-256 key that never leaves this browser, and registers it with the AgentGuard contract.</div>
+ <button class="go" id="setup">Set up this phone</button></div>
+
+<div class="card" id="c2"><div class="step">STEP 2</div><h2>Let the AI agent spend</h2>
+ <button class="alt" id="small" disabled>Agent sends 0.005 MON (under the limit)</button>
+ <button class="go" id="big" disabled>Agent sends 0.03 MON (over the limit)</button>
+ <div id="out2" class="small" style="margin-top:8px"></div>
+ <div id="intent"></div></div>
+
+<div class="card" id="c3"><div class="step">STEP 3</div><h2>Lay the phone face-down, then knock</h2>
+ <div class="small" id="hint">Tap Start, put the phone face-down on a table, and knock twice on its back. It buzzes when it feels you.</div>
+ <div class="meter"><i id="m"></i></div><div class="small" id="sense">Sensors idle.</div>
+ <button class="go" id="start" disabled>Start</button>
+ <div id="out3" style="margin-top:10px"></div></div>
+
+<p class="small">Testnet demo. Web-browser motion data is weaker evidence than the native FACEDOWN app, so these approvals are
+recorded at a lower assurance level. Contracts: <span id="links"></span></p>
+</main><script>
+const $ = (id) => document.getElementById(id);
+const hex = (b) => "0x" + [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+const unhex = (h) => new Uint8Array(h.slice(2).match(/../g).map(x => parseInt(x, 16)));
+const post = async (p, body) => { const r = await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.detail || j.error || r.status); return j; };
+let cfg, keys, account, current;
+const ex = (tx, label) => `<a target="_blank" href="${cfg.explorer}${tx}">${label || tx.slice(0, 14) + "…"}</a>`;
+
+// key storage: IndexedDB keeps the non-extractable private key on this device
+const db = () => new Promise((res, rej) => { const r = indexedDB.open("presence-agent", 1); r.onupgradeneeded = () => r.result.createObjectStore("k"); r.onsuccess = () => res(r.result); r.onerror = rej; });
+const idb = async (op, v) => { const d = await db(); return new Promise((res, rej) => { const t = d.transaction("k", op ? "readwrite" : "readonly").objectStore("k");
+  const r = op ? t.put(v, "pair") : t.get("pair"); r.onsuccess = () => res(r.result); r.onerror = rej; }); };
+
+async function init() {
+  cfg = await (await fetch("/agent/config")).json();
+  $("links").innerHTML = `${ex("", "")}`.replace(/href="[^"]*"/, `href="${cfg.explorer.replace("/tx/", "/address/")}${cfg.guard}"`).replace("></a>", ">AgentGuard</a>")
+    + ` · <a target="_blank" href="${cfg.explorer.replace("/tx/", "/address/")}${cfg.registry}">PresenceRegistry</a>`;
+  keys = await idb(false);
+  if (keys) await bind();
+}
+
+async function bind() {
+  const raw = new Uint8Array(await crypto.subtle.exportKey("raw", keys.publicKey));
+  const x = hex(raw.slice(1, 33)), y = hex(raw.slice(33, 65));
+  $("dev").textContent = "Registering this phone on Monad…";
+  const r = await post("/agent/bind", { x, y });
+  account = r.account;
+  $("dev").innerHTML = `<span class="ok">✓ This phone is set up.</span> Account ${account.slice(0, 10)}…${r.tx ? " · " + ex(r.tx, "registered") : ""}`;
+  $("setup").style.display = "none"; $("small").disabled = $("big").disabled = false;
+}
+
+$("setup").onclick = async () => {
+  try {
+    keys = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, false, ["sign", "verify"]);
+    await idb(true, keys); await bind();
+  } catch (e) { $("dev").innerHTML = `<span class="err">${e.message}</span>`; }
+};
+
+async function ask(amount) {
+  $("out2").textContent = `Agent is sending ${amount} MON…`; $("intent").innerHTML = "";
+  try {
+    const r = await post("/agent/request", { account, amount });
+    if (r.status === "SENT_WITHOUT_APPROVAL") { $("out2").innerHTML = `<span class="ok">✓ ${amount} MON sent without asking you</span> (under the 0.01 limit) · ${ex(r.tx)}`; return; }
+    current = r;
+    $("out2").innerHTML = `<span class="err">Blocked on-chain:</span> over the limit, so the agent's transfer is waiting for you · ${ex(r.request_tx)}`;
+    $("intent").innerHTML = `<div class="intent">Your AI agent wants to send<div class="amt">${amount} MON</div>
+      <div class="to">to ${r.to.slice(0, 6)}…${r.to.slice(-4)}</div><div class="knock">Knock to approve</div><div class="cd" id="cd"></div></div>`;
+    tick(); $("start").disabled = false; $("c3").scrollIntoView({ behavior: "smooth" });
+  } catch (e) { $("out2").innerHTML = `<span class="err">${e.message}</span>`; }
+}
+$("small").onclick = () => ask(0.005); $("big").onclick = () => ask(0.03);
+
+function tick() {
+  const t = setInterval(() => { if (!current || !$("cd")) return clearInterval(t);
+    const left = current.deadline - Math.floor(Date.now() / 1000);
+    $("cd").textContent = left > 0 ? `${left}s left` : "Expired: ask the agent again"; if (left <= 0) clearInterval(t); }, 500);
+}
+
+$("start").onclick = async () => {
+  if (typeof DeviceMotionEvent !== "undefined" && DeviceMotionEvent.requestPermission) {
+    try { if (await DeviceMotionEvent.requestPermission() !== "granted") throw 0; } catch { $("sense").textContent = "Motion permission denied."; return; }
+  }
+  try { await navigator.wakeLock?.request("screen"); } catch {}
+  $("start").disabled = true; $("hint").innerHTML = "<b>Now:</b> put the phone face-down and knock twice on its back.";
+  let downSince = 0, peak = 0, knocks = 0, lastKnock = 0, done = false, got = false;
+  const onMotion = async (e) => {
+    got = true; if (done) return;
+    const g = e.accelerationIncludingGravity || {}; const a = e.acceleration || {};
+    const z = g.z ?? 0, mag = Math.hypot(g.x || 0, g.y || 0, g.z || 0);
+    const lin = (a && a.x != null) ? Math.hypot(a.x, a.y, a.z) : Math.abs(mag - 9.81);
+    const now = performance.now();
+    if (z < -7) { downSince = downSince || now; } else { downSince = 0; }
+    const down = downSince ? now - downSince : 0;
+    $("m").style.width = Math.min(100, down / 8) + "%";
+    $("sense").textContent = down ? `Face-down ${(down / 1000).toFixed(1)}s · knocks ${knocks}` : "Waiting for the phone to be face-down…";
+    if (down > 800 && lin > 1.2 && now - lastKnock > 250) {
+      knocks++; lastKnock = now; peak = Math.max(peak, lin); navigator.vibrate?.(80);
+      if (knocks >= 2) { done = true; window.removeEventListener("devicemotion", onMotion); approve(Math.round(down), peak, knocks); }
+    }
+  };
+  window.addEventListener("devicemotion", onMotion);
+  setTimeout(() => { if (!got) $("sense").innerHTML = '<span class="err">No motion sensor here. Open this page on a phone.</span>'; }, 2500);
+};
+
+async function approve(faceDownMs, peak, knocks) {
+  $("out3").textContent = "Knock felt. Signing the exact transaction and sending it to Monad…";
+  try {
+    const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keys.privateKey, unhex(current.intent_id)));
+    const r = await post("/agent/approve", { intent_id: current.intent_id, r: hex(sig.slice(0, 32)), s: hex(sig.slice(32, 64)), face_down_ms: faceDownMs, peak, knocks });
+    navigator.vibrate?.([250, 120, 250]);
+    $("out3").innerHTML = `<span class="ok">✓ Approved by a human. ${current.amount} MON sent.</span>
+      <div class="row"><span>Blocked request</span>${ex(r.request_tx)}</div>
+      <div class="row"><span>Your knock, verified on-chain (P-256)</span>${ex(r.approve_tx)}</div>
+      ${r.presence_tx ? `<div class="row"><span>Presence recorded</span>${ex(r.presence_tx)}</div>` : ""}`;
+    $("intent").innerHTML = ""; current = null;
+  } catch (e) { $("out3").innerHTML = `<span class="err">${e.message}</span>`; $("start").disabled = false; }
+}
+init();
+</script></body></html>

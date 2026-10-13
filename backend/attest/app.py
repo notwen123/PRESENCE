@@ -120,6 +120,13 @@ def create_app(service: Attest | None = None) -> FastAPI:
                 "physical": "enforced" if svc.enforce_physical else "reported",
                 "anchor": "monad-testnet" if svc.monad else None}
 
+    if os.environ.get("AGENT_GUARD") and os.environ.get("AGENT_KEY") and os.environ.get("MONAD_ATTESTOR_KEY"):
+        from . import agent
+        from .monad import TESTNET_RPC, MonadAnchor
+        agent.mount(app, svc, os.environ["AGENT_GUARD"], os.environ["AGENT_KEY"],
+                    MonadAnchor(os.environ["MONAD_REGISTRY"], os.environ["MONAD_ATTESTOR_KEY"], os.environ.get("MONAD_RPC_URL", TESTNET_RPC)),
+                    os.environ["MONAD_ATTESTOR_KEY"])
+
     @app.get("/monad", include_in_schema=False)
     def monad_page():
         """Live verifier for PRESENCE on Monad: reads the registry and the agent-guard vault in the browser."""

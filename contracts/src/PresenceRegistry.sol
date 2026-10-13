@@ -27,6 +27,7 @@ contract PresenceRegistry {
     mapping(address => bool) public isAttestor;
     mapping(bytes32 => Attestation) internal _attestations; // key: attestationKey(...)
     mapping(bytes32 => Profile) internal _profiles; // key: identity (hash of the device identity)
+    mapping(bytes32 => mapping(uint256 => uint256)) internal _days; // identity => day/256 => bitmap of present days
 
     event AttestorSet(address indexed attestor, bool allowed);
     event PresenceAttested(
@@ -72,6 +73,8 @@ contract PresenceRegistry {
         if (_attestations[key].recordedAt != 0) revert AlreadyAttested();
         _attestations[key] = Attestation(evidenceRoot, assurance, uint64(block.timestamp), msg.sender);
 
+        uint256 d = uint256(uint64(day));
+        _days[identity][d >> 8] |= 1 << (d & 255);
         Profile storage p = _profiles[identity];
         if (p.attestations == 0) p.lastDay = -1;
         int64 gap = day - p.lastDay;
@@ -89,6 +92,16 @@ contract PresenceRegistry {
     function isPresent(bytes32 identity, uint8 minAssurance, uint32 maxAgeDays) external view returns (bool) {
         Profile storage p = _profiles[identity];
         return p.attestations > 0 && p.lastAssurance >= minAssurance && today() - p.lastDay <= int64(uint64(maxAgeDays));
+    }
+
+    /// @notice Number of distinct UTC days in [fromDay, toDay] on which `identity` was verified present.
+    /// Proof of personhood checks a human once; this checks the same human keeps showing up, so a farm's cost
+    /// grows with identities x days (cf. arXiv 2609.35300, bounded participation).
+    function presentDays(bytes32 identity, int64 fromDay, int64 toDay) public view returns (uint256 n) {
+        if (toDay < fromDay || fromDay < 0) return 0;
+        for (uint256 d = uint256(uint64(fromDay)); d <= uint256(uint64(toDay)); d++) {
+            if (_days[identity][d >> 8] & (1 << (d & 255)) != 0) n++;
+        }
     }
 
     function profileOf(bytes32 identity) external view returns (Profile memory) {
