@@ -208,6 +208,19 @@ class Attest:
                 "expires_at": now + ttl, "policy": policy.public(), "stake": stake,
                 "mode": "development" if self.dev_mode else "production"}
 
+    def begin(self, session_id: str) -> dict:
+        """Restart the server clock when the user is back in the app (the wallet signed in another app).
+        Only before the first checkpoint, and it can only move the start later: a process can't be compressed."""
+        with self.lock:
+            row = self._session(session_id)
+            self._expect(row, "ACTIVE")
+            if self.db.execute("SELECT 1 FROM checkpoints WHERE session_id=? LIMIT 1", (session_id,)).fetchone():
+                raise AttestError(Reason.INVALID_STATE, "session already has checkpoints")
+            now = max(self.clock(), row["started_at"])
+            with self.db:
+                self.db.execute("UPDATE sessions SET started_at=? WHERE id=?", (now, session_id))
+        return {"state": "ACTIVE", "started_at": now}
+
     def authorize(self, session_id: str, wallet_signature_b58: str, signed_stake_tx_b64: str | None = None) -> dict:
         with self.lock:
             row = self._session(session_id)

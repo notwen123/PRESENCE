@@ -78,3 +78,21 @@ def test_metamask_link_flow(api):
     assert api.post(f"/wallet/link/{code}", json={"address": acct.address, "signature": "0x" + sig.removeprefix("0x")}).status_code == 200
     assert api.get(f"/wallet/link/{code}").json()["address"] == acct.address
     assert api.get("/metamask").status_code == 200
+
+
+def test_begin_moves_the_start_later_only_before_checkpoints(api, svc, clock, device):
+    from .conftest import start
+    sess = start(api, device)
+    t0 = svc._session(sess.session_id)["started_at"]
+    clock.advance(40)
+    assert api.post(f"/session/{sess.session_id}/begin").status_code == 200
+    assert svc._session(sess.session_id)["started_at"] == t0 + 40
+    run_process(api, sess, clock)
+    assert api.post(f"/session/{sess.session_id}/begin").status_code == 409
+    assert submit_and_verify(api, sess).json()["verified"] is True
+
+
+def test_monad_only_advertises_no_token_reward(api, svc):
+    from attest.settlement import UnconfiguredAttestor
+    svc.attestor = UnconfiguredAttestor()
+    assert all(m["reward"]["token"] == 0 for m in api.get("/missions").json())

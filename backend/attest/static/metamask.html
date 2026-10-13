@@ -36,7 +36,7 @@ async function run() {
     const signature = await ethereum.request({ method: "personal_sign", params: [message, account] });
     const r = await post(signature);
     if (!r.ok) throw new Error((await r.json()).detail || r.status);
-    say("Done ✓", "Returning to FACEDOWN…", "ok");
+    say("Done ✓", "Tap the FACEDOWN notification (or switch back to FACEDOWN). It continues by itself.", "ok");
     const back = "intent://return#Intent;scheme=facedown;package=com.presence;end";
     B.textContent = "Back to FACEDOWN"; B.onclick = () => { location.href = back; }; B.style.display = "inline-block";
     setTimeout(() => { location.href = back; }, 600);

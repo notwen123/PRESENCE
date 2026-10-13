@@ -198,8 +198,9 @@ class AttestApi @Inject constructor(@PublishedApi internal val http: HttpClient)
     suspend fun walletLink(): WalletLink = post("/wallet/link", emptyMap())
     suspend fun walletLinkStatus(code: String): WalletLinkStatus = get("/wallet/link/$code")
     suspend fun sessionSiwe(sessionId: String): SessionSiwe = get("/session/$sessionId/siwe")
+    suspend fun beginSession(sessionId: String) { call { http.post("$base/session/$sessionId/begin") } }
     fun metamaskLink(query: String): String =
-        "https://metamask.app.link/dapp/" + base.removePrefix("https://") + "/metamask?" + query
+        "metamask://dapp/" + base.removePrefix("https://") + "/metamask?" + query
 
     /** DEVELOPMENT ONLY (server refuses on mainnet): fee SOL + test tokens for a new test wallet. */
     suspend fun squad(wallet: String): Squad? = get("/squads/$wallet")

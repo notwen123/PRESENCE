@@ -29,6 +29,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -247,6 +248,9 @@ class PresenceViewModel @Inject constructor(
                 val stakeTx = session.stake?.let { Base64.decode(it.transaction, Base64.NO_WRAP) }
                 if (stakeTx != null) throw AttestException("STAKE_FAILED", "staked missions are not available on Monad yet")
                 wallet.authorizeSession(session.sessionId)
+                // The wallet signed in MetaMask: wait until the user is back in FACEDOWN, then start the server clock.
+                com.presence.AppForeground.resumed.first { it }
+                api.beginSession(session.sessionId)
                 staked = null
                 log(session.sessionId, "authorized", "metamask")
                 _state.update { it.copy(busy = false) }

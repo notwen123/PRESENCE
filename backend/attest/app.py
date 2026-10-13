@@ -119,8 +119,9 @@ def create_app(service: Attest | None = None) -> FastAPI:
     def missions():
         # Without a token pool (Monad-only deployment) only missions with no stake can run.
         staking = not isinstance(svc.attestor, UnconfiguredAttestor)
-        return [{**m.public(), "reward": {**m.public()["reward"], "symbol": svc.symbol(m)}}
-                for m in svc.missions.values() if staking or not m.stake_token]
+        # No token pool, no token reward: never advertise a payout the deployment can't make.
+        reward = lambda m: {**m.public()["reward"], "symbol": svc.symbol(m)} if staking else {**m.public()["reward"], "token": 0}
+        return [{**m.public(), "reward": reward(m)} for m in svc.missions.values() if staking or not m.stake_token]
 
     @app.post("/session")
     def create_session(body: CreateSession):
@@ -156,6 +157,10 @@ def create_app(service: Attest | None = None) -> FastAPI:
     def session_siwe(session_id: str):
         row = svc._session(session_id)
         return {"wallet": row["wallet"], "message": row["siws_message"], "state": row["state"]}
+
+    @app.post("/session/{session_id}/begin")
+    def begin(session_id: str):
+        return svc.begin(session_id)
 
     @app.post("/session/{session_id}/authorize")
     def authorize(session_id: str, body: Authorize):

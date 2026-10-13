@@ -72,7 +72,15 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra(EXTRA_MISSION)?.let { pendingMission.value = it }
     }
 
+    override fun onResume() {
+        super.onResume(); AppForeground.resumed.value = true
+        getSystemService(android.app.NotificationManager::class.java)?.cancel(77) // the "return from MetaMask" notice
+    }
+    override fun onPause() { AppForeground.resumed.value = false; super.onPause() }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
         pendingMission.value = intent.getStringExtra(EXTRA_MISSION)
         // Native launch screen: white with Pip (API 31+). Never held open:
         // the first frame replaces it as soon as it's drawn; data loads inside the app.
