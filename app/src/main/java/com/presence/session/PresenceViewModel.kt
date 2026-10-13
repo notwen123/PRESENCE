@@ -245,11 +245,10 @@ class PresenceViewModel @Inject constructor(
                 if (mission.stake.token > 0) ensureTestFunds(account.address)
                 val session = api.createSession(account.address, mission.missionId, key.publicKeyB64)
                 val stakeTx = session.stake?.let { Base64.decode(it.transaction, Base64.NO_WRAP) }
-                val (signature, stakeSigned) = wallet.signSession(sender, session.siwsMessage, stakeTx)
-                val auth = api.authorize(session.sessionId, if (account.address.startsWith("0x")) "0x" + signature.joinToString("") { "%02x".format(it) } else Base58.encodeToString(signature),
-                    stakeSigned?.let { Base64.encodeToString(it, Base64.NO_WRAP) })
-                staked = session.stake?.let { "${formatToken(it.amount)} ${it.symbol}" }
-                log(session.sessionId, "authorized", auth.eligibility)
+                if (stakeTx != null) throw AttestException("STAKE_FAILED", "staked missions are not available on Monad yet")
+                wallet.authorizeSession(session.sessionId)
+                staked = null
+                log(session.sessionId, "authorized", "metamask")
                 _state.update { it.copy(busy = false) }
 
                 // Short countdown after returning from the wallet so the first window isn't missed.
@@ -264,7 +263,7 @@ class PresenceViewModel @Inject constructor(
                 val checks = mutableListOf(
                     Check("Wallet signature", CheckStatus.PASSED),
                     Check("Device check",
-                        if (auth.eligibility == "SGT_VERIFIED") CheckStatus.PASSED else CheckStatus.DEV_BYPASS),
+                        CheckStatus.DEV_BYPASS),
                     Check("One-time session code", CheckStatus.PASSED),
                     Check("Session evidence"),
                     Check("Session rules"),

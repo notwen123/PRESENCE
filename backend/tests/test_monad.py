@@ -67,3 +67,14 @@ def test_monad_only_lists_only_unstaked_missions(api, svc):
     from attest.settlement import UnconfiguredAttestor
     svc.attestor = UnconfiguredAttestor()
     assert all(not m["stake"]["token"] for m in api.get("/missions").json())
+
+
+def test_metamask_link_flow(api):
+    from eth_account import Account
+    from eth_account.messages import encode_defunct
+    acct = Account.create(); code = api.post("/wallet/link").json()["code"]
+    assert api.get(f"/wallet/link/{code}").json()["address"] is None
+    sig = acct.sign_message(encode_defunct(text=f"Link MetaMask to FACEDOWN\ncode: {code}")).signature.hex()
+    assert api.post(f"/wallet/link/{code}", json={"address": acct.address, "signature": "0x" + sig.removeprefix("0x")}).status_code == 200
+    assert api.get(f"/wallet/link/{code}").json()["address"] == acct.address
+    assert api.get("/metamask").status_code == 200

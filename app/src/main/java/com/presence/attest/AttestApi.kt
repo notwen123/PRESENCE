@@ -171,6 +171,10 @@ data class VerifyResult(
 @Serializable @PublishedApi internal data class ErrorBody(val error: String, val detail: String = "")
 
 @Singleton
+@Serializable data class WalletLink(val code: String)
+@Serializable data class WalletLinkStatus(val address: String? = null)
+@Serializable data class SessionSiwe(val wallet: String, val message: String, val state: String)
+
 class AttestApi @Inject constructor(@PublishedApi internal val http: HttpClient) {
     @PublishedApi internal val json = Json { ignoreUnknownKeys = true }
     @PublishedApi internal val base = BuildConfig.BACKEND_URL.trimEnd('/')
@@ -189,6 +193,13 @@ class AttestApi @Inject constructor(@PublishedApi internal val http: HttpClient)
             mapOf("signature" to signatureB58) + (stakeTxB64?.let { mapOf("stake_transaction" to it) } ?: emptyMap()))
 
     suspend fun pools(): Pools = get("/sponsor/pools")
+
+    // MetaMask mobile: the app opens [metamaskLink] in MetaMask's browser; the page signs and posts back to ATTEST.
+    suspend fun walletLink(): WalletLink = post("/wallet/link", emptyMap())
+    suspend fun walletLinkStatus(code: String): WalletLinkStatus = get("/wallet/link/$code")
+    suspend fun sessionSiwe(sessionId: String): SessionSiwe = get("/session/$sessionId/siwe")
+    fun metamaskLink(query: String): String =
+        "https://metamask.app.link/dapp/" + base.removePrefix("https://") + "/metamask?" + query
 
     /** DEVELOPMENT ONLY (server refuses on mainnet): fee SOL + test tokens for a new test wallet. */
     suspend fun squad(wallet: String): Squad? = get("/squads/$wallet")

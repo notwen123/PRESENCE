@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from . import identity, mission_generator, store
 from .config import Settings
-from .errors import HTTP_STATUS, AttestError
+from .errors import HTTP_STATUS, AttestError, Reason
 from .evidence import CheckpointData
 from .policy import load_missions
 from .service import Attest
@@ -88,6 +88,11 @@ def build_service(s: Settings) -> Attest:
                   ttl_seconds=s.session_ttl_seconds, enforce_physical=s.enforce_physical, monad=monad)
 
 
+class LinkBody(BaseModel):
+    address: str
+    signature: str
+
+
 def create_app(service: Attest | None = None) -> FastAPI:
     svc = service or build_service(Settings.from_env())
     app = FastAPI(title="ATTEST Engine", version="0.1.0")
@@ -120,6 +125,37 @@ def create_app(service: Attest | None = None) -> FastAPI:
     @app.post("/session")
     def create_session(body: CreateSession):
         return svc.create_session(body.wallet, body.mission_id, body.ephemeral_pubkey)
+
+    # ---- MetaMask mobile: the app opens /metamask inside MetaMask's browser, which signs and posts back here.
+    links: dict[str, tuple[float, str | None]] = {}
+
+    @app.get("/metamask", include_in_schema=False)
+    def metamask_page():
+        return FileResponse(Path(__file__).parent / "static" / "metamask.html")
+
+    @app.post("/wallet/link")
+    def wallet_link():
+        import secrets, time
+        for k in [k for k, (t, _) in links.items() if time.time() - t > 600]: links.pop(k, None)
+        code = secrets.token_urlsafe(9)
+        links[code] = (time.time(), None)
+        return {"code": code}
+
+    @app.post("/wallet/link/{code}")
+    def wallet_link_sign(code: str, body: LinkBody):
+        if code not in links: raise AttestError(Reason.SESSION_NOT_FOUND, "unknown or expired link")
+        identity.verify_wallet_signature(body.address, f"Link MetaMask to FACEDOWN\ncode: {code}", body.signature)
+        links[code] = (links[code][0], body.address)
+        return {"ok": True}
+
+    @app.get("/wallet/link/{code}")
+    def wallet_link_status(code: str):
+        return {"address": links.get(code, (0, None))[1]}
+
+    @app.get("/session/{session_id}/siwe")
+    def session_siwe(session_id: str):
+        row = svc._session(session_id)
+        return {"wallet": row["wallet"], "message": row["siws_message"], "state": row["state"]}
 
     @app.post("/session/{session_id}/authorize")
     def authorize(session_id: str, body: Authorize):

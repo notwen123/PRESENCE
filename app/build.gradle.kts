@@ -94,7 +94,6 @@ dependencies {
     implementation("com.google.zxing:core:3.5.3") // QR code of the on-chain proof on the receipt
     implementation("com.solanamobile:web3-solana:0.2.2")
     implementation("com.solanamobile:mobile-wallet-adapter-clientlib-ktx:2.0.0")
-    implementation("io.metamask.androidsdk:metamask-android-sdk:0.6.6")
 
     implementation("com.google.dagger:hilt-android:2.51.1")
     kapt("com.google.dagger:hilt-compiler:2.51.1")

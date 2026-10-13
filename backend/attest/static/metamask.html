@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FACEDOWN · MetaMask</title>
+<style>
+ body{margin:0;font:17px/1.5 system-ui,sans-serif;background:#f4f8f5;color:#111827;display:flex;min-height:100vh;align-items:center;justify-content:center}
+ .c{background:#fff;border:1.5px solid #cfe6d6;border-radius:24px;padding:28px;max-width:420px;margin:20px;text-align:center}
+ h1{font-size:24px;margin:0 0 8px} p{color:#4b5563} .ok{color:#15803d;font-weight:700} .err{color:#b42318}
+ button{background:#15803d;color:#fff;border:0;border-radius:14px;padding:14px 22px;font-size:17px;font-weight:700;margin-top:10px}
+</style></head><body><div class="c">
+<h1 id="t">FACEDOWN on Monad</h1><p id="m">Connecting to MetaMask…</p><button id="b" style="display:none">Try again</button>
+</div><script>
+const q = new URLSearchParams(location.search), T = document.getElementById("t"), M = document.getElementById("m"), B = document.getElementById("b");
+const say = (t, m, cls) => { T.textContent = t; M.textContent = m; M.className = cls || ""; };
+async function run() {
+  B.style.display = "none";
+  try {
+    if (!window.ethereum) return say("Open in MetaMask", "This page must be opened inside the MetaMask app browser.", "err");
+    const [account] = await ethereum.request({ method: "eth_requestAccounts" });
+    let message, post;
+    if (q.get("code")) {
+      message = "Link MetaMask to FACEDOWN\ncode: " + q.get("code");
+      post = (signature) => fetch("/wallet/link/" + q.get("code"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: account, signature }) });
+    } else {
+      const s = await (await fetch("/session/" + q.get("session") + "/siwe")).json();
+      if (s.wallet.toLowerCase() !== account.toLowerCase()) return say("Wrong account", "Switch MetaMask to " + s.wallet, "err");
+      message = s.message;
+      post = (signature) => fetch("/session/" + q.get("session") + "/authorize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ signature }) });
+    }
+    say("Sign in MetaMask", "Approve the signature request to continue.");
+    const signature = await ethereum.request({ method: "personal_sign", params: [message, account] });
+    const r = await post(signature);
+    if (!r.ok) throw new Error((await r.json()).detail || r.status);
+    say("Done ✓", "Go back to FACEDOWN. It continues by itself.", "ok");
+  } catch (e) { say("Not signed", e.message || String(e), "err"); B.style.display = "inline-block"; }
+}
+B.onclick = run; run();
+</script></body></html>
