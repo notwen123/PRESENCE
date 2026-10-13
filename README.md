@@ -41,6 +41,14 @@ and nothing holds you to the promise you made yourself. We built the thing that 
 
 ---
 
+## Monad Metropolis submission
+
+| | |
+|---|---|
+| **Primary track** | **Trust, Identity & AI Infrastructure**: a protocol-level primitive for trust and provenance in the AI-agent era. PRESENCE proves a real person physically did a process on a real device, and any Monad contract can check it with `isPresent()`. |
+| **Built during the hackathon** | `PresenceRegistry` and `HumanGatedVault` (Solidity, Foundry, 5 tests), the ATTEST server's Monad anchoring (3 tests), the live verifier page (`/monad`) and the testnet demo below. FACEDOWN's app and verification engine are the existing context we built on. |
+| **Sponsor bounties** | None claimed yet. We list a bounty here only once its integration is built and demoable. |
+
 ## PRESENCE on Monad: proof of a human, for contracts and AI agents
 
 **Monad Metropolis · Trust, Identity & AI Infrastructure.** PRESENCE verifies a real person's physical session
