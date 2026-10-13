@@ -1,0 +1,32 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# PRESENCE
+/.dev
+/target
+/node_modules
+backend/.venv
+backend/*.db*
+__pycache__/
+.env
+/.anchor
+/.devnet
+node_modules/
+
+# local secrets (Monad deployer key etc.)
+.env.*
+!.env.example
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/lib/
+contracts/broadcast/*/31337/
