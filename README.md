@@ -3,7 +3,8 @@
 <p align="center">
   <a href="docs/whitepaper/presence_whitepaper.pdf"><b>Whitepaper</b></a> ·
   <a href="#monad-metropolis-submission"><b>Monad submission</b></a> ·
-  <a href="#presence-on-monad-proof-of-a-human-for-contracts-and-ai-agents"><b>Live on Monad</b></a> ·
+  <a href="#judges-try-it-in-60-seconds-no-install"><b>Try it</b></a> ·
+  <a href="#knock-to-approve-a-human-in-the-loop-for-ai-agents"><b>Knock to Approve</b></a> ·
   <a href="#why-monad"><b>Why Monad</b></a> ·
   <a href="#how-it-works"><b>How it works</b></a> ·
   <a href="#run-it"><b>Run it</b></a>
@@ -14,7 +15,7 @@
   <img src="https://img.shields.io/badge/track-Trust%2C%20Identity%20%26%20AI%20Infra-6E54FF?labelColor=1D2B24" alt="Track: Trust, Identity and AI Infrastructure">
   <img src="https://img.shields.io/badge/Solidity-Foundry-363636?labelColor=1D2B24" alt="Solidity, Foundry">
   <img src="https://img.shields.io/badge/Android-Kotlin%20%C2%B7%20Compose-3DDC84?logo=android&logoColor=white&labelColor=1D2B24" alt="Android Kotlin Compose">
-  <img src="https://img.shields.io/badge/tests-53%20backend%20%C2%B7%205%20contract%20%C2%B7%2010%20Android-1F9D55?labelColor=1D2B24" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-59%20backend%20%C2%B7%2010%20contract%20%C2%B7%2010%20Android-1F9D55?labelColor=1D2B24" alt="Tests">
 </p>
 
 **AI agents can now operate phones, so any reward that checks for taps can be farmed.** **PRESENCE** proves that a
@@ -37,35 +38,87 @@ and nothing holds you to the promise you made yourself. We built the thing that 
 
 | | |
 |---|---|
-| **Primary track** | **Trust, Identity & AI Infrastructure**: a protocol-level primitive for trust and provenance in the AI-agent era. PRESENCE proves a real person physically did a process on a real device, and any Monad contract can check it with `isPresent()`. |
-| **Built during the hackathon** | `PresenceRegistry` and `HumanGatedVault` (Solidity, Foundry, 5 tests), the ATTEST server's Monad anchoring (3 tests), the live verifier page (`/monad`) and the testnet demo below. FACEDOWN's app and verification engine are the existing context we built on. |
-| **Sponsor bounties** | None claimed yet. We list a bounty here only once its integration is built and demoable. |
+| **Primary track** | **Trust, Identity & AI Infrastructure**: a protocol-level primitive for trust and provenance in the AI-agent era. PRESENCE proves a real person physically did a process on a real device, and any Monad contract can check it. |
+| **Built during the hackathon** | `PresenceRegistry` (+ `presentDays`), `AgentGuard` (Knock to Approve, on-chain P-256), `SustainedHumanAirdrop`, `PresenceVault` (stakes, No-Loss refunds, freezes in MON), `HumanGatedVault`; 10 Foundry tests; ATTEST's Monad settlement, MetaMask (SIWE) sign-in, the `/agent` web demo and the `/monad` verifier. FACEDOWN's app and verification engine are the existing context we built on. |
+| **Sponsor bounties** | None claimed. |
+
+### Judges: try it in 60 seconds, no install
+
+Open **[facedown-attest.onrender.com/agent](https://facedown-attest.onrender.com/agent) on your phone's browser** (Chrome on Android; the APK is optional):
+
+1. **Set up this phone.** The browser makes a P-256 key that never leaves the device and binds it to `AgentGuard`.
+2. **Agent sends 0.005 MON.** Under the 0.01 limit: it goes through with no human.
+3. **Agent sends 0.03 MON.** Over the limit: **blocked on-chain**, waiting for you.
+4. **Put the phone face-down and knock twice on its back.** The phone signs that exact transfer, and `AgentGuard`
+   checks the signature itself through Monad's P-256 precompile (`0x100`, RIP-7212). The money moves, and your presence
+   is recorded in `PresenceRegistry`.
 
 ## PRESENCE on Monad: proof of a human, for contracts and AI agents
 
-**Monad Metropolis · Trust, Identity & AI Infrastructure.** PRESENCE verifies a real person's physical session
-off-chain (server-timed, hash-chained, physical knock check-ins) and records the verdict **once** in
-[`PresenceRegistry`](contracts/src/PresenceRegistry.sol) on Monad. Any contract can then ask
-`isPresent(identity, minAssurance, maxAgeDays)`. Identities and missions go on-chain only as SHA-256 hashes.
+PRESENCE verifies a real person's physical session off-chain (server-timed, hash-chained, physical knock check-ins)
+and records the verdict **once** in [`PresenceRegistry`](contracts/src/PresenceRegistry.sol) on Monad. Identities and
+missions go on-chain only as SHA-256 hashes. Contracts ask two questions:
 
-[`HumanGatedVault`](contracts/src/HumanGatedVault.sol) shows why that matters in the agent era: an AI agent's key can
-move small amounts alone, but **any withdrawal above its limit needs a fresh proof that its human was physically
-present**. Taps, scripts and agents can't produce that proof.
+- **Is a human here now?** `isPresent(identity, minAssurance, maxAgeDays)`
+- **Does a human keep showing up?** `presentDays(identity, fromDay, toDay)`: distinct UTC days verified present.
+  Proof of personhood checks a human once; this makes a farm's cost grow with identities × days
+  (cf. the bounded-participation argument in [arXiv 2609.35300](https://arxiv.org/abs/2609.35300)).
 
-**Live on Monad testnet (chain 10143), both contracts source-verified (Sourcify exact match):**
+### Knock to Approve: a human in the loop for AI agents
+
+[`AgentGuard`](contracts/src/AgentGuard.sol) holds an agent's budget. The agent spends small amounts alone; anything
+above its limit becomes a pending intent that only its human can release, **by physically knocking on their phone**.
+The phone signs `sha256(intentId)` with a P-256 key (WebCrypto in any phone browser; the same curve as Android
+Keystore and Passkeys), and the contract verifies it with Monad's P-256 precompile. The server relays the
+transaction but **cannot forge an approval**: without the phone's key, the contract reverts. Each signature is bound to
+one intent (contract, chain, account, recipient, amount, nonce) and expires in 120 s.
+
+**Live on Monad testnet (chain 10143), all contracts source-verified on Sourcify:**
 
 | | |
 |---|---|
-| `PresenceRegistry` | [`0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179`](https://testnet.monadvision.com/address/0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179) |
-| `HumanGatedVault` | [`0x2AF710af85914DEe0AA89017223638367645f6b4`](https://testnet.monadvision.com/address/0x2AF710af85914DEe0AA89017223638367645f6b4) (agent limit 0.01 MON) |
-| ① Agent withdraws 0.03 MON, no presence proof: **blocked** (`HumanPresenceRequired`) | [`0xe257dd0b…70dc`](https://testnet.monadvision.com/tx/0xe257dd0baf4eacc1ea37ef191e27f8a75d3f4d548d23e83275977d06961970dc) |
-| ② A real 2-minute FACEDOWN session is verified by ATTEST and recorded | [`0xa0466d10…8e52`](https://testnet.monadvision.com/tx/0xa0466d10fb58ae4c9fcfbc52360f234bf0b99c49fde663b2e31991fa85348e52) |
-| ③ Same agent, same 0.03 MON: **allowed** | [`0x1d1befe4…3bf4`](https://testnet.monadvision.com/tx/0x1d1befe4e297cfef6b0924e3be01f7ac998f0f33dd6117929f53a4868d873bf4) |
+| `PresenceRegistry` (v2) | [`0x5519dacf…E52B`](https://testnet.monadvision.com/address/0x5519dacface816519ACa3ee3cD592fd4c61dE52B) |
+| `AgentGuard` | [`0xf76fAd5d…3c14`](https://testnet.monadvision.com/address/0xf76fAd5d28B261d976f6e05E1240547551Fa3c14) (agent limit 0.01 MON) |
+| `SustainedHumanAirdrop` | [`0x62CbaaAc…64d1`](https://testnet.monadvision.com/address/0x62CbaaAc53ef415fE0262E41e3ce4C2B9af164d1) (pays only after 3 present days in 30) |
+| `PresenceVault` | [`0xfC157D4b…163B`](https://testnet.monadvision.com/address/0xfC157D4b8D9573413a3A793056D7625eD972163B) (stakes, refunds, freezes) |
+| ① Phone key bound to the agent's account | [`0x29614634…dbc8`](https://testnet.monadvision.com/tx/0x29614634cc9d580209c071b93cc784fd6c24a88f0963a9a3fed946220675dbc8) |
+| ② Agent sends 0.005 MON: **no approval needed** | [`0x010c2940…c372`](https://testnet.monadvision.com/tx/0x010c294ea44fe84537b076059e11e341811958fb819de0f7715570861e5bc372) |
+| ③ Agent sends 0.03 MON: **held on-chain** (`IntentRequested`) | [`0x4d9525a8…dbbb`](https://testnet.monadvision.com/tx/0x4d9525a885cbf6ab43bd9aa6b7b8ae92ff6af6f0327668cd88574a70c817dbbb) |
+| ④ A forged signature: **reverted** by the contract | reproduced by [`backend/scripts/knock_e2e.py`](backend/scripts/knock_e2e.py) |
+| ⑤ The knock's P-256 signature: **verified on-chain, 0.03 MON sent** | [`0xcb66afd0…d8eb`](https://testnet.monadvision.com/tx/0xcb66afd0dba5336c6b44a1659b73658ae45b1369639cc738329e19fcfebcd8eb) |
+| ⑥ The knock recorded as presence | [`0x6621b1f9…811d`](https://testnet.monadvision.com/tx/0x6621b1f9f0a2cc477974e5a6a538c38e2394760225cbc289aecde8b4796d811d) |
+| A real FACEDOWN session from the phone app (MetaMask sign-in, 4 knock check-ins) | [`0xe07ccaa1…59c4`](https://testnet.monadvision.com/tx/0xe07ccaa13b6a2d2c381a9a455a7dd99e48509c68e9cb5d2337c5453412c759c4) |
 
-All addresses and hashes: [`contracts/deployments/monad-testnet.json`](contracts/deployments/monad-testnet.json).
-Reproduce: `cd contracts && forge test` (5 tests), then [`scripts/monad_demo.py`](scripts/monad_demo.py) against an
-ATTEST server started with `MONAD_REGISTRY` and `MONAD_ATTESTOR_KEY`. The session in ② ran through the reference client (the
-same protocol the app speaks), in development mode. A live verifier page is served by ATTEST at `/monad`.
+The first demo ([`HumanGatedVault`](contracts/src/HumanGatedVault.sol): an agent withdrawal blocked, then allowed after
+a verified session) is still live; all addresses and hashes are in
+[`contracts/deployments/monad-testnet.json`](contracts/deployments/monad-testnet.json).
+Reproduce: `cd contracts && forge test` (10 tests, real P-256 signatures), then `backend/scripts/knock_e2e.py`
+against a running ATTEST.
+
+### Add it to your contract: one line
+
+```solidity
+interface IPresence {
+    function isPresent(bytes32 identity, uint8 minAssurance, uint32 maxAgeDays) external view returns (bool);
+    function presentDays(bytes32 identity, int64 fromDay, int64 toDay) external view returns (uint256);
+}
+
+// a human verified present in the last day
+require(IPresence(0x5519dacface816519ACa3ee3cD592fd4c61dE52B).isPresent(id, 2, 1), "human presence required");
+```
+
+### How it compares
+
+| | Proves a unique human | Proves a human is **here, now** | Keeps proving it **every day** | Agent can't fake it with taps | Extra hardware |
+|---|---|---|---|---|---|
+| CAPTCHA | no | weakly, once | no | no (agents solve them) | none |
+| World ID | **yes** (iris, once) | no | no | n/a | Orb |
+| Passkeys / device attestation | no | a device, not a body | no | no (taps a button) | none |
+| **PRESENCE** | no (one per device) | **yes**: physical knocks felt by the accelerometer, server-timed | **yes**: `presentDays` | **yes**: needs a phone lying face-down and a physical knock | none (the phone) |
+
+PRESENCE is complementary to proof of personhood: World ID says *who is unique*; PRESENCE says *a body was at this
+device just now, and keeps showing up*. A web-browser knock is weaker evidence than the native app, so `/agent`
+records at assurance 1 and the FACEDOWN app at 2.
 
 ## The problem
 
@@ -94,8 +147,8 @@ is how that proof gets made every day: a habit people want, that produces labell
   human-day, checked on-chain through [`verifyPresence()`](docs/integration.md).
 - **Employers, schools and parents** funding focus pools: sponsor deposits pay verified sessions (built: sponsor pools,
   on-chain deposit verification).
-- **Wallets and agent-payment apps** that want a physical-presence check before a high-value approval. *Hypothesis,
-  not built.*
+- **Wallets and agent-payment apps** that want a physical-presence check before a high-value approval (built as a
+  testnet demo: `AgentGuard`; no customer yet).
 
 No customers have signed; these are the buyers we will test first.
 
@@ -119,7 +172,7 @@ especially the EVM wallets and agent frameworks that AI agents already use. Meas
 |---|---|
 | Recording one verified session (`record()`) | **1 transaction, 161,016 gas**, about 0.0164 MON at the testnet gas price of 102 gwei |
 | Block time, averaged over 1,000 blocks | **0.304 s** |
-| Contracts | `PresenceRegistry` and `HumanGatedVault`, both source-verified (Sourcify exact match) |
+| Contracts | `PresenceRegistry`, `AgentGuard`, `SustainedHumanAirdrop`, `PresenceVault`, `HumanGatedVault`, source-verified on Sourcify |
 
 - **Composable by default.** It's the EVM, so any wallet, vault, quest or agent framework can call
   `isPresent(identity, minAssurance, maxAgeDays)` with no SDK. `HumanGatedVault` is about 50 lines.
@@ -336,11 +389,12 @@ games leave players at a loss (Gao)."
 ## Run it
 
 ```bash
-cd contracts && forge test                      # 5 tests: create-once, attestor auth, streaks, expiry, vault gate
-cd backend && uv run pytest -q                  # 54 tests: protocol, policy, physical evidence, caps, Monad anchoring
+cd contracts && forge test                      # 10 tests: registry, presentDays, vault, AgentGuard with real P-256 sigs
+cd backend && uv run pytest -q                  # 59 tests: protocol, policy, physical evidence, caps, Monad, MetaMask SIWE
 # ATTEST anchored on Monad (key from your own .env.local, never committed):
-MONAD_REGISTRY=0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179 MONAD_ATTESTOR_KEY=0x... ATTEST_DEV_MODE=true \
+MONAD_REGISTRY=0x5519dacface816519ACa3ee3cD592fd4c61dE52B MONAD_ATTESTOR_KEY=0x... ATTEST_DEV_MODE=true \
   uv run --project backend python -m attest.app          # then open http://127.0.0.1:8787/monad
+# Knock to Approve also needs AGENT_GUARD=0xf76fAd5d28B261d976f6e05E1240547551Fa3c14 and AGENT_KEY (the agent's key); open /agent
 uv run --project backend python scripts/monad_demo.py session http://127.0.0.1:8787 device.key
 ```
 
