@@ -101,7 +101,8 @@ def create_app(service: Attest | None = None) -> FastAPI:
     def health():
         return {"ok": True, "mode": "development" if svc.dev_mode else "production",
                 "network": svc.network, "settlement": type(svc.attestor).__name__,
-                "physical": "enforced" if svc.enforce_physical else "reported"}
+                "physical": "enforced" if svc.enforce_physical else "reported",
+                "anchor": "monad-testnet" if svc.monad else None}
 
     @app.get("/monad", include_in_schema=False)
     def monad_page():

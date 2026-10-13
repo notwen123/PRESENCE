@@ -418,7 +418,11 @@ class Attest:
                                                      claim["seq"], bytes(row["evidence_root"]), int(receipt["assurance"][1:]))
             except Exception as e:  # Monad is an extra anchor: never let it undo a Solana settlement
                 receipt["monad"] = {"status": "FAILED", "chain": "monad-testnet", "detail": str(e)[:200]}
-        state = "SETTLED" if result.status == "CONFIRMED" else "VERIFIED"
+        monad_ok = receipt.get("monad", {}).get("status") == "CONFIRMED"
+        if result.status == "NOT_CONFIGURED" and self.monad:  # Monad-only deployment: the registry is the anchor
+            receipt["settlement"] = settlement = {"status": "CONFIRMED" if monad_ok else "PENDING", "chain": "monad-testnet",
+                                                  **{k: receipt["monad"].get(k) for k in ("tx", "explorer_url", "registry")}}
+        state = "SETTLED" if result.status == "CONFIRMED" or (result.status == "NOT_CONFIGURED" and monad_ok) else "VERIFIED"
         with self.lock, self.db:
             self.db.execute("UPDATE sessions SET state=?, receipt=? WHERE id=?",
                             (state, json.dumps(receipt), session_id))

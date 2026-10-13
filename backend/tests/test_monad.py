@@ -38,3 +38,12 @@ def test_monad_failure_never_undoes_settlement(api, svc, clock, device):
     sess = start(api, device); run_process(api, sess, clock)
     rc = submit_and_verify(api, sess).json()["receipt"]
     assert rc["settlement"]["status"] == "CONFIRMED" and rc["monad"]["status"] == "FAILED"
+
+
+def test_monad_only_deployment_settles_on_monad(api, svc, clock, device):
+    from attest.settlement import UnconfiguredAttestor
+    svc.attestor, svc.monad = UnconfiguredAttestor(), FakeMonad()
+    sess = start(api, device); run_process(api, sess, clock)
+    rc = submit_and_verify(api, sess).json()["receipt"]
+    assert rc["settlement"]["status"] == "CONFIRMED" and rc["settlement"]["chain"] == "monad-testnet"
+    assert api.get(f"/session/{sess.session_id}/receipt").json()["settlement"]["tx"] == "0xabc"

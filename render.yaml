@@ -1,8 +1,8 @@
-# Render blueprint for the ATTEST server (Solana devnet, development mode: Seeker check bypassed and labelled).
-# Render dashboard -> New -> Blueprint -> this repo. Paste the devnet attestor keypair JSON into ATTESTOR_KEYPAIR_JSON.
+# Render blueprint for the ATTEST server: PRESENCE on Monad testnet (development mode: device check labelled).
+# Secrets (set in the Render dashboard, never in git): MONAD_ATTESTOR_KEY.
 services:
   - type: web
-    name: facedown-attest
+    name: presence-attest
     runtime: docker
     plan: free
     dockerContext: ./backend
@@ -11,17 +11,11 @@ services:
     envVars:
       - key: ATTEST_DEV_MODE
         value: "true"
-      - key: SOLANA_NETWORK
-        value: devnet
-      - key: SOLANA_RPC_URL
-        value: https://api.devnet.solana.com
-      - key: PROGRAM_ID
-        value: CFZsFPtvwo5KDenV3qgorroaRmT7NuYsfPnd4avFS2cT
-      - key: REWARD_MINT
-        value: GGqPuCZvbfmVuaUDU5AHqSxrMSbM9L3qJMP1Q7p7myRU
-      - key: REWARD_DECIMALS
-        value: "6"
       - key: ATTEST_DB
         value: /tmp/attest.db
-      - key: ATTESTOR_KEYPAIR_JSON
+      - key: MONAD_RPC_URL
+        value: https://testnet-rpc.monad.xyz
+      - key: MONAD_REGISTRY
+        value: "0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179"
+      - key: MONAD_ATTESTOR_KEY
         sync: false
