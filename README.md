@@ -23,6 +23,16 @@ it with `isPresent()`. The session is timed by our server, every check-in must b
 feels, and claims are bound to one device. **FACEDOWN** is the first app built on it: book a session, lay the phone
 face-down, knock on its back when it buzzes, and the verified session lands in `PresenceRegistry` on Monad.
 
+<table><tr>
+<td width="150" align="center"><img src="app/src/main/res/drawable-nodpi/mascot_wave.webp" width="130" alt="Pip waving"></td>
+<td>
+
+**Hi, I'm Pip.** I live inside FACEDOWN: I'm on the launch screen, I count down with you, and I celebrate when the
+server verifies your session. I'll walk you through this page. The short version: **phones are built to be picked up,
+and nothing holds you to the promise you made yourself. We built the thing that does, and we made it provable.**
+
+</td></tr></table>
+
 ## Monad Metropolis submission
 
 | | |
@@ -148,16 +158,7 @@ sequenceDiagram
 
 The full maths is in the [whitepaper](docs/whitepaper/presence_whitepaper.pdf).
 
-## What a cheater would try
-
-| Attempt | Why it fails |
-|---|---|
-| Fake the timer / fast-forward | The **server** times the session from its own clock. Early checkpoints are rejected. |
-| Use the phone during the session | Leaving the app is recorded in every checkpoint; picking it up breaks face-down stillness. |
-| Let a script or an AI phone agent answer | Answers must be physical knocks the accelerometer feels. **29 of 30 taps injected by a script on a real phone** read below the human-touch floor. |
-| Replay or forge evidence | Checkpoints form a SHA-256 chain signed by a per-session Android Keystore key bound into the sign-in. |
-| Record the same session twice | `PresenceRegistry` is create-once per (identity, mission, day, claim index). |
-| An agent drains its owner's vault | `HumanGatedVault` reverts with `HumanPresenceRequired` above its limit unless the owner was present recently. |
+## Measured: physics catches scripts
 
 <table><tr>
 <td width="50%"><img src="docs/img/charts/touch_motion.png" alt="Touch motion: injected taps on a real phone fall below the 150 mm/s² floor"></td>
@@ -170,24 +171,90 @@ own sensors (the emulator's virtual accelerometer, or a privileged system-level 
 
 </td></tr></table>
 
-## FACEDOWN: the app that makes the proofs
-
-<table><tr>
-<td width="50%"><img src="docs/img/gif/how.gif" alt="Choosing a session length in the app"></td>
-<td width="50%"><img src="docs/img/gif/facedown.gif" alt="Phone face-down; knock on the back when it buzzes"></td>
-</tr><tr>
-<td><img src="docs/img/gif/squad.gif" alt="Squads share one streak"></td>
-<td><img src="docs/img/gif/urge.gif" alt="Urge Catcher asks first"></td>
-</tr></table>
+## What FACEDOWN does
 
 | | Feature | How |
 |---|---|---|
-| ⏱️ | **Book a session** | 2, 10, 25 min or a Facedown Hour, with a daily reminder. Free (sponsor-funded) or with a stake that is never lost. |
-| 📱 | **Put it face-down** | The screen goes black; the phone buzzes at unpredictable moments and you knock on the back to answer. |
-| 🧪 | **Prove it** | Accelerometer stillness + knock jolt, server clock, signed hash chain. |
-| ⛓️ | **Recorded on Monad** | Each verified session is written once to `PresenceRegistry`. |
-| 🛑 | **Urge Catcher** | Opening a distracting app offers a 10-minute session first, or *Earn your scroll*: 60 s face-down unlocks it for 10 min. |
-| 👥 | **Squads** | 3–8 friends share one streak; a freeze covers one missed day (repairable within 24 h). |
+| ⏱️ | **Book a session** | A daily time with a reminder, and a length: **2, 10, 25 min or a Facedown Hour**. Pick **Free** (a sponsor pays), **No-Loss** (lock test tokens, always get them back, only finishers earn) or **Stake** (finish for your stake back + up to 20% from sponsors). |
+| 📱 | **Put it face-down** | The screen goes black. The phone buzzes a few times at moments you can't predict; **knock on the back** to answer. One missed knock is forgiven. |
+| 🧪 | **Prove it** | The accelerometer proves the phone lay face-down and still, and that every answer was a physical knock, not input injected by a script or AI agent. The server times everything on its own clock. |
+| ⛓️ | **Get paid on-chain** | Each verified session is recorded once in `PresenceRegistry` on **Monad**; any contract can check it with `isPresent()`. |
+| 🔒 | **Cool-down Lock** | Quit a Stake session and your stake is **locked for 7 days** (14, then 30 for repeat quits), then it comes back. Never lost, never given to anyone else. |
+| 🛑 | **Urge Catcher** | Open Instagram, YouTube or X and FACEDOWN pauses first: *go facedown 10 min instead?* *Open anyway* unlocks after 10 seconds. |
+| 🟢 | **Presence Minutes** | Whenever the phone lies face-down and still, a ring on Today fills toward a 3-hour daily goal, without opening the app. |
+| 👥 | **Squads** | 3–8 friends share **one streak** that breaks for everyone if anyone misses a day. A **streak freeze** (paid in tokens, half burned) covers one missed day. |
+
+<p align="center">
+<img src="screenshots/home.png" width="15.5%" alt="Today: Presence Minutes ring, 2/10/25/60 min, Free | No-Loss | Stake">
+<img src="screenshots/urge.png" width="15.5%" alt="Urge Catcher: go facedown 10 min instead of opening the app">
+<img src="screenshots/mission.png" width="15.5%" alt="Confirm: No-Loss terms before any wallet prompt">
+<img src="screenshots/facedown.png" width="15.5%" alt="Face-down: the screen goes black while the session runs">
+<img src="screenshots/receipt.png" width="15.5%" alt="Receipt: human touch and phone-down verified, recorded on-chain">
+<img src="screenshots/progress.png" width="15.5%" alt="Progress: squad streak and members, streak freezes">
+<br><sub>Today · Urge Catcher · Confirm · Face-down · Receipt · Progress. Android emulator on <b>devnet</b>, development mode
+(device check bypassed and labelled). Rewards are test tokens with no value.</sub>
+</p>
+
+## FACEDOWN in four moments
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**① Choose how long, and what's at stake.** 2, 10, 25 or 60 minutes. Free, No-Loss or Stake, with the exact terms
+on screen before any wallet prompt. MetaMask signs once.
+
+<img src="docs/img/gif/how.gif" alt="Choosing length and stake in the app">
+
+</td>
+<td width="50%" valign="top">
+
+**② Put it face-down, knock when it buzzes.** The screen goes dark. Check-ins come at unpredictable moments; a knock
+on the back answers without picking the phone up.
+
+<img src="docs/img/gif/facedown.gif" alt="The phone face-down; knock on the back when it buzzes">
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+**③ The server verifies, the flame lights.** Server-timed duration, every hash in the evidence chain, human touch and
+phone-down. Then the session is recorded on Monad and the stake comes back with a bonus.
+
+<img src="docs/img/gif/verified.gif" alt="Session verified: the flame lights and the outcome is recorded on-chain">
+
+</td>
+<td valign="top">
+
+**④ Bring friends, catch the urge.** A squad shares one streak. Reach for a distracting app and FACEDOWN asks first.
+
+<img src="docs/img/gif/squad.gif" alt="Squad: one streak together">
+<img src="docs/img/gif/urge.gif" alt="Urge Catcher: FaceDown asks first">
+
+</td>
+</tr>
+</table>
+
+<table><tr>
+<td width="150" align="center"><img src="app/src/main/res/drawable-nodpi/mascot_guard.webp" width="130" alt="Pip on guard"></td>
+<td>
+
+**Pip, on guard duty:** "People ask me: *can't you just cheat?* Try it. Here's what happens."
+
+</td></tr></table>
+
+| Attempt | Why it fails |
+|---|---|
+| Fake the timer / fast-forward | The **server** times the session from its own clock. Checkpoints that arrive early are rejected. |
+| Use the phone during the session | Leaving the app is recorded in every checkpoint and fails the session. Picking the phone up breaks face-down stillness. |
+| Let a script or an AI phone agent answer | Answers are knocks felt by the accelerometer (or a finger tap's jolt). Injected input moves nothing: production rejects it (`AUTOMATION_DETECTED`). **Measured on a real phone below.** |
+| Replay or forge evidence | Checkpoints form a SHA-256 hash chain signed by a per-session Android Keystore key bound into the wallet's sign-in. |
+| Farm sponsor pools with many wallets | One claim per **device identity** per mission per day, and a per-device daily reward cap. |
+| Swap the stake transaction in the wallet | ATTEST submits the stake only if it moves exactly what was issued; wallets may add priority fees, nothing else. |
+| Claim the payout twice | Payout and attestation are one transaction on a PDA that can be created once. |
+| Record the same session twice | `PresenceRegistry` is create-once per (identity, mission, day, claim index). |
+| An AI agent drains its owner's vault | `HumanGatedVault` reverts with `HumanPresenceRequired` above its limit unless the owner was present recently. |
 
 ## The research behind it
 
@@ -223,6 +290,38 @@ games leave players at a loss (Gao)."
 
 </td></tr></table>
 
+## The business
+
+- **Consumer (FACEDOWN):** sponsor-funded Free and No-Loss tiers for reach; streak freezes as a token sink and revenue;
+  later a Pro tier and a small rake on opt-in Stake pools (where legal).
+- **Infrastructure (PRESENCE):** proof-of-human-process per attestation, sold to airdrop issuers, quest platforms and
+  ecosystem campaigns on Monad. "5 verified facedown sessions" is a quest a bot can't farm.
+- **Sponsors:** parents funding a student's pool, companies funding employees' focus hours, protocols funding
+  campaigns. Sponsor deposits are verified on-chain before they're credited.
+- **No new token, no emissions.** Rewards are transfers from sponsor pools, so the economy can't inflate away.
+
+## Roadmap (designed, not built)
+
+- **P4 hardware attestation.** Android Key Attestation for the session key, so a phone that lies about its sensors is
+  refused. Closes the biggest gap we measured.
+- **Guardian quorum.** Several independent attestors instead of one operator, each re-checking the same evidence
+  ([trust-model.md](docs/trust-model.md)).
+- **Yield-funded No-Loss.** On mainnet, locked stakes earn yield (e.g. a lending vault on Monad) that funds the
+  finisher reward instead of sponsors. Not built: no such vault on devnet to test against.
+- **Presence Model.** Replace the hand-tuned knock/stillness thresholds with a small on-device classifier trained on
+  real session traces (opt-in). Not built: we don't have the data yet, and a model without data would be theatre.
+- **Presence Passport.** A monthly soulbound badge for verified presence that other apps read through `verifyPresence()`.
+- **Urge Forecast.** Suggest Facedown Hours from the phone's own usage stats (the hours you lose most).
+- **Pledge mode.** Quitting sends the stake to a cause you pick instead of locking it (needs legal review).
+
+<table><tr>
+<td width="150" align="center"><img src="app/src/main/res/drawable-nodpi/mascot_thinking.webp" width="130" alt="Pip thinking"></td>
+<td>
+
+**Pip, being honest:** "Read this before you quote us. We'd rather you hear the limits from us."
+
+</td></tr></table>
+
 ## Honest limitations
 
 - **One attestor today.** ATTEST signs every record; `PresenceRegistry` supports several attestors (`setAttestor`), and
@@ -244,6 +343,14 @@ MONAD_REGISTRY=0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179 MONAD_ATTESTOR_KEY=0x.
   uv run --project backend python -m attest.app          # then open http://127.0.0.1:8787/monad
 uv run --project backend python scripts/monad_demo.py session http://127.0.0.1:8787 device.key
 ```
+
+## Credits
+
+- **Film:** stock footage from [Pexels](https://www.pexels.com) (Pexels License); music "Mountains" by Andrew Ev
+  ([Mixkit](https://mixkit.co) licence); voice by Kokoro-82M TTS (Apache-2.0). Every app screen is the real app.
+- **Fonts:** Manrope and Inter (SIL OFL).
+- **AI tools:** Claude Code (Anthropic) wrote much of the code, tests, docs, whitepaper and film under the team's
+  direction and review.
 
 ## Team WARRIO
 
