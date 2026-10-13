@@ -38,17 +38,34 @@
     "minDays": 3,
     "windowDays": 30
   },
-  "AgentGuard": {
+  "AgentGuardV1": {
     "address": "0xf76fAd5d28B261d976f6e05E1240547551Fa3c14",
     "agent": "0x16A257897f801A0A481eC7348e4B60dA09682C36",
     "limitWei": "10000000000000000",
     "p256Precompile": "0x0000000000000000000000000000000000000100"
   },
-  "knockToApproveDemo": {
+  "AgentGuard": {
+    "address": "0xdC3Ba526FF565D0c76131D54a30aFA3c55041B11",
+    "deployTx": "0x40740852e064dff7dff631c259c8302f49d5274e759cd9db492800b27acc45c6",
+    "agent": "0x55215B31A8Fe22135440F9D4859c81e4Fc5E2271",
+    "agentWallet": "Privy server wallet; Privy policy allows eth_signTransaction only to AgentGuard on chain 10143",
+    "limitWei": "10000000000000000",
+    "p256Precompile": "0x0000000000000000000000000000000000000100"
+  },
+  "knockToApproveDemoV1": {
     "bindDevice": "0x29614634cc9d580209c071b93cc784fd6c24a88f0963a9a3fed946220675dbc8",
     "smallSendNoApproval": "0x010c294ea44fe84537b076059e11e341811958fb819de0f7715570861e5bc372",
     "largeSendBlocked": "0x4d9525a885cbf6ab43bd9aa6b7b8ae92ff6af6f0327668cd88574a70c817dbbb",
     "knockApprovedP256": "0xcb66afd0dba5336c6b44a1659b73658ae45b1369639cc738329e19fcfebcd8eb",
     "presenceRecorded": "0x6621b1f9f0a2cc477974e5a6a538c38e2394760225cbc289aecde8b4796d811d"
+  },
+  "knockToApproveDemo": {
+    "agentSignedBy": "Privy",
+    "bindDevice": "0x41bd309df3eb8168f0ec604d5bb3551fe68e4732572fd06ad32c73f713d80439",
+    "smallSendNoApproval": "0xaa726c9cdf881b438c162ef28fe3055a7865a3bf6034b26d426209ac8aa3ff84",
+    "largeSendBlocked": "0xa33e7f59a14f99c57a6f6f7a7c49a9bf4e4a7b89c41466e4bf09f9b92b683e59",
+    "knockApprovedP256": "0x0881af9d492b67d1edf291bb93bffb2130ff1f2f36eb7f0c5dcde2e6c4a8f9b2",
+    "presenceRecorded": "0x3dcaa0a3185f0a0941aa4d638a58afdf8f3a938fd2753b501adef71f253d0365",
+    "privyPolicyDeniedDrain": "Privy API 400 policy_violation for eth_signTransaction to 0x...dEaD (reproduce: backend/scripts/knock_e2e.py)"
   }
 }

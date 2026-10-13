@@ -1,5 +1,5 @@
 # Render blueprint for the ATTEST server: PRESENCE on Monad testnet (development mode: device check labelled).
-# Secrets (set in the Render dashboard, never in git): MONAD_ATTESTOR_KEY, AGENT_KEY.
+# Secrets (set in the Render dashboard, never in git): MONAD_ATTESTOR_KEY, PRIVY_APP_ID, PRIVY_APP_SECRET.
 services:
   - type: web
     name: presence-attest
@@ -26,8 +26,12 @@ services:
       - key: DAILY_REWARD_CAP_PER_DEVICE
         value: "0.1"
       - key: AGENT_GUARD
-        value: "0xf76fAd5d28B261d976f6e05E1240547551Fa3c14"
+        value: "0xdC3Ba526FF565D0c76131D54a30aFA3c55041B11"
+      - key: PRIVY_AGENT_WALLET
+        value: mu4ahzu41ifknuii096qo6c1
+      - key: PRIVY_APP_ID
+        sync: false
       - key: MONAD_ATTESTOR_KEY
         sync: false
-      - key: AGENT_KEY
+      - key: PRIVY_APP_SECRET
         sync: false

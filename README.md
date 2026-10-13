@@ -40,7 +40,7 @@ and nothing holds you to the promise you made yourself. We built the thing that 
 |---|---|
 | **Primary track** | **Trust, Identity & AI Infrastructure**: a protocol-level primitive for trust and provenance in the AI-agent era. PRESENCE proves a real person physically did a process on a real device, and any Monad contract can check it. |
 | **Built during the hackathon** | `PresenceRegistry` (+ `presentDays`), `AgentGuard` (Knock to Approve, on-chain P-256), `SustainedHumanAirdrop`, `PresenceVault` (stakes, No-Loss refunds, freezes in MON), `HumanGatedVault`; 10 Foundry tests; ATTEST's Monad settlement, MetaMask (SIWE) sign-in, the `/agent` web demo and the `/monad` verifier. FACEDOWN's app and verification engine are the existing context we built on. |
-| **Sponsor bounties** | None claimed. |
+| **Sponsor bounty: Privy** (beyond login) | The AI agent's wallet is a **Privy server wallet** with a **Privy policy**: it may sign only transactions to `AgentGuard` on Monad (chain 10143); Privy refuses anything else (`policy_violation`). Inside that, `AgentGuard` makes any transfer over 0.01 MON wait for a human knock. The FACEDOWN app signs in with Google through Privy and uses the embedded wallet to sign sessions, stakes and freezes on Monad (Privy Android SDK). |
 
 ### Judges: try it in 60 seconds, no install
 
@@ -66,7 +66,7 @@ missions go on-chain only as SHA-256 hashes. Contracts ask two questions:
 
 ### Knock to Approve: a human in the loop for AI agents
 
-[`AgentGuard`](contracts/src/AgentGuard.sol) holds an agent's budget. The agent spends small amounts alone; anything
+[`AgentGuard`](contracts/src/AgentGuard.sol) holds an agent's budget. The agent itself is a **Privy server wallet**: a Privy policy lets it sign only calls to `AgentGuard` on Monad, so even a compromised agent can't send funds anywhere else (we tested it: Privy answers `policy_violation`). Privy bounds *where* the agent can send; `AgentGuard` bounds *how much* it can send without its human. The agent spends small amounts alone; anything
 above its limit becomes a pending intent that only its human can release, **by physically knocking on their phone**.
 The phone signs `sha256(intentId)` with a P-256 key (WebCrypto in any phone browser; the same curve as Android
 Keystore and Passkeys), and the contract verifies it with Monad's P-256 precompile. The server relays the
@@ -78,15 +78,16 @@ one intent (contract, chain, account, recipient, amount, nonce) and expires in 1
 | | |
 |---|---|
 | `PresenceRegistry` (v2) | [`0x5519dacf…E52B`](https://testnet.monadvision.com/address/0x5519dacface816519ACa3ee3cD592fd4c61dE52B) |
-| `AgentGuard` | [`0xf76fAd5d…3c14`](https://testnet.monadvision.com/address/0xf76fAd5d28B261d976f6e05E1240547551Fa3c14) (agent limit 0.01 MON) |
+| `AgentGuard` | [`0xdC3Ba526…1B11`](https://testnet.monadvision.com/address/0xdC3Ba526FF565D0c76131D54a30aFA3c55041B11) (agent limit 0.01 MON; agent = Privy server wallet `0x55215B31…2271`) |
 | `SustainedHumanAirdrop` | [`0x62CbaaAc…64d1`](https://testnet.monadvision.com/address/0x62CbaaAc53ef415fE0262E41e3ce4C2B9af164d1) (pays only after 3 present days in 30) |
 | `PresenceVault` | [`0xfC157D4b…163B`](https://testnet.monadvision.com/address/0xfC157D4b8D9573413a3A793056D7625eD972163B) (stakes, refunds, freezes) |
-| ① Phone key bound to the agent's account | [`0x29614634…dbc8`](https://testnet.monadvision.com/tx/0x29614634cc9d580209c071b93cc784fd6c24a88f0963a9a3fed946220675dbc8) |
-| ② Agent sends 0.005 MON: **no approval needed** | [`0x010c2940…c372`](https://testnet.monadvision.com/tx/0x010c294ea44fe84537b076059e11e341811958fb819de0f7715570861e5bc372) |
-| ③ Agent sends 0.03 MON: **held on-chain** (`IntentRequested`) | [`0x4d9525a8…dbbb`](https://testnet.monadvision.com/tx/0x4d9525a885cbf6ab43bd9aa6b7b8ae92ff6af6f0327668cd88574a70c817dbbb) |
+| ① Phone key bound to the agent's account | [`0x41bd309d…0439`](https://testnet.monadvision.com/tx/0x41bd309df3eb8168f0ec604d5bb3551fe68e4732572fd06ad32c73f713d80439) |
+| ② Agent (signed by Privy) sends 0.005 MON: **no approval needed** | [`0xaa726c9c…ff84`](https://testnet.monadvision.com/tx/0xaa726c9cdf881b438c162ef28fe3055a7865a3bf6034b26d426209ac8aa3ff84) |
+| ③ Agent sends 0.03 MON: **held on-chain** (`IntentRequested`) | [`0xa33e7f59…3e59`](https://testnet.monadvision.com/tx/0xa33e7f59a14f99c57a6f6f7a7c49a9bf4e4a7b89c41466e4bf09f9b92b683e59) |
+| ③b Agent tries to sign a transfer to any other address | **refused by Privy** (`policy_violation`), never reaches the chain |
 | ④ A forged signature: **reverted** by the contract | reproduced by [`backend/scripts/knock_e2e.py`](backend/scripts/knock_e2e.py) |
-| ⑤ The knock's P-256 signature: **verified on-chain, 0.03 MON sent** | [`0xcb66afd0…d8eb`](https://testnet.monadvision.com/tx/0xcb66afd0dba5336c6b44a1659b73658ae45b1369639cc738329e19fcfebcd8eb) |
-| ⑥ The knock recorded as presence | [`0x6621b1f9…811d`](https://testnet.monadvision.com/tx/0x6621b1f9f0a2cc477974e5a6a538c38e2394760225cbc289aecde8b4796d811d) |
+| ⑤ The knock's P-256 signature: **verified on-chain, 0.03 MON sent** | [`0x0881af9d…f9b2`](https://testnet.monadvision.com/tx/0x0881af9d492b67d1edf291bb93bffb2130ff1f2f36eb7f0c5dcde2e6c4a8f9b2) |
+| ⑥ The knock recorded as presence | [`0x3dcaa0a3…0365`](https://testnet.monadvision.com/tx/0x3dcaa0a3185f0a0941aa4d638a58afdf8f3a938fd2753b501adef71f253d0365) |
 | A real FACEDOWN session from the phone app (MetaMask sign-in, 4 knock check-ins) | [`0xe07ccaa1…59c4`](https://testnet.monadvision.com/tx/0xe07ccaa13b6a2d2c381a9a455a7dd99e48509c68e9cb5d2337c5453412c759c4) |
 
 The first demo ([`HumanGatedVault`](contracts/src/HumanGatedVault.sol): an agent withdrawal blocked, then allowed after
@@ -394,7 +395,8 @@ cd backend && uv run pytest -q                  # 59 tests: protocol, policy, ph
 # ATTEST anchored on Monad (key from your own .env.local, never committed):
 MONAD_REGISTRY=0x5519dacface816519ACa3ee3cD592fd4c61dE52B MONAD_ATTESTOR_KEY=0x... ATTEST_DEV_MODE=true \
   uv run --project backend python -m attest.app          # then open http://127.0.0.1:8787/monad
-# Knock to Approve also needs AGENT_GUARD=0xf76fAd5d28B261d976f6e05E1240547551Fa3c14 and AGENT_KEY (the agent's key); open /agent
+# Knock to Approve also needs AGENT_GUARD=0xdC3Ba526FF565D0c76131D54a30aFA3c55041B11 and either PRIVY_AGENT_WALLET +
+# PRIVY_APP_ID + PRIVY_APP_SECRET (agent = Privy server wallet) or AGENT_KEY (a local key); then open /agent
 uv run --project backend python scripts/monad_demo.py session http://127.0.0.1:8787 device.key
 ```
 
