@@ -255,7 +255,7 @@ def _verified_reward(api, clock, device):
 
 def test_daily_reward_cap_per_device_under_then_at_cap(api, svc, clock, device, attestor):
     deposit(api, attestor, "seed", 5_000_000)
-    svc.daily_reward_cap = 300_000  # 0.3 SKR per device per day
+    svc.daily_reward_cap = 0.3  # SKR per device per day
     assert _verified_reward(api, clock, device) == (0.2, False)  # under the cap: full bonus
     assert _verified_reward(api, clock, device) == (0.1, True)   # only what is left of the cap
     assert attestor.records[-1].reward_base == 1_100_000         # stake still returned in full
@@ -264,7 +264,7 @@ def test_daily_reward_cap_per_device_under_then_at_cap(api, svc, clock, device, 
 
 def test_daily_reward_cap_resets_the_next_day(api, svc, clock, device, attestor):
     deposit(api, attestor, "seed", 5_000_000)
-    svc.daily_reward_cap = 200_000
+    svc.daily_reward_cap = 0.2
     assert _verified_reward(api, clock, device) == (0.2, False)
     assert _verified_reward(api, clock, device) == (0.0, True)
     clock.advance(86_400)

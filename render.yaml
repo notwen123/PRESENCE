@@ -17,5 +17,13 @@ services:
         value: https://testnet-rpc.monad.xyz
       - key: MONAD_REGISTRY
         value: "0x1d13EAC5bADfA35eB2767f10A50C27CF54d7F179"
+      - key: MONAD_VAULT
+        value: "0xfC157D4b8D9573413a3A793056D7625eD972163B"
+      - key: ATTEST_MISSIONS
+        value: /app/missions_monad.json
+      - key: FREEZE_PRICE
+        value: "0.02"
+      - key: DAILY_REWARD_CAP_PER_DEVICE
+        value: "0.1"
       - key: MONAD_ATTESTOR_KEY
         sync: false

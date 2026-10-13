@@ -98,6 +98,16 @@ class WalletRepository @Inject constructor(
         throw AttestException("WALLET_REJECTED", "MetaMask did not sign in time")
     }
 
+    /** Opens MetaMask to pay for a streak freeze; returns once ATTEST has confirmed the payment on Monad. */
+    suspend fun payFreeze(orderId: String) {
+        openInMetaMask(api.metamaskLink("freeze=$orderId"))
+        repeat(90) {
+            delay(2000)
+            if (api.freezeStatus(orderId).status == "PAID") { notifyReturn("Freeze bought. Tap to return."); return }
+        }
+        throw AttestException("WALLET_REJECTED", "MetaMask did not pay in time")
+    }
+
     suspend fun signTransaction(@Suppress("UNUSED_PARAMETER") sender: ActivityResultSender, tx: ByteArray): ByteArray =
         throw AttestException("WALLET_REJECTED", "token payments are not available on Monad yet")
 

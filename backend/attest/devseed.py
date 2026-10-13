@@ -16,6 +16,7 @@ from .config import Settings
 from .settlement import TOKEN_PROGRAM, SolanaAttestor
 
 PER_MISSION = 20  # test tokens per mission per fresh start
+MON_PER_MISSION = 5 * 10 ** 16  # 0.05 MON per mission on Monad
 
 
 def main() -> None:
@@ -24,6 +25,18 @@ def main() -> None:
         raise SystemExit("devseed runs only in development mode off mainnet")
     svc = build_service(s)
     a = svc.attestor
+    from .monad_vault import MonadVault
+    if isinstance(a, MonadVault):  # Monad: our attestor funds each mission's MON reward pool once per fresh disk
+        if svc.db.execute("SELECT 1 FROM sponsor_deposits LIMIT 1").fetchone():
+            return print("devseed: pools already funded")
+        for mission_id in svc.missions:
+            try:
+                sig = a.fund(MON_PER_MISSION)
+                svc.sponsor_deposit(mission_id, sig)
+                print(f"devseed: {mission_id} +{MON_PER_MISSION / 1e18} MON ({sig})")
+            except Exception as e:
+                print(f"devseed: {mission_id} not funded ({e})")
+        return
     if not isinstance(a, SolanaAttestor) or not a.reward_mint:
         return print("devseed: no reward pool configured")
     if svc.db.execute("SELECT 1 FROM sponsor_deposits LIMIT 1").fetchone():

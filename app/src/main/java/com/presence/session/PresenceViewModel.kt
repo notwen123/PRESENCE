@@ -114,15 +114,14 @@ class PresenceViewModel @Inject constructor(
         }
     }
 
-    /** Buy one streak freeze: the wallet signs an SKR payment; the server burns half and credits the freeze. */
+    /** Buy one streak freeze: MetaMask pays in MON; the server burns half on Monad and credits the freeze. */
     fun buyFreeze(sender: ActivityResultSender) = viewModelScope.launch {
         val account = wallet.account ?: return@launch
         guarded {
             _state.update { it.copy(busy = true) }
             val order = api.freezeOrder(account.address)
-            val signed = wallet.signTransaction(sender, Base64.decode(order.transaction, Base64.NO_WRAP))
-            val paid = api.freezePay(order.orderId, Base64.encodeToString(signed, Base64.NO_WRAP))
-            _state.update { it.copy(busy = false, message = "Streak freeze added. ${formatToken(paid.burned)} ${order.symbol} burned.") }
+            wallet.payFreeze(order.orderId)  // MetaMask pays on Monad; ATTEST verifies it and burns half
+            _state.update { it.copy(busy = false, message = "Streak freeze added. ${formatToken(order.price / 2)} ${order.symbol} burned on Monad.") }
             refresh()
         }
     }
@@ -246,7 +245,6 @@ class PresenceViewModel @Inject constructor(
                 if (mission.stake.token > 0) ensureTestFunds(account.address)
                 val session = api.createSession(account.address, mission.missionId, key.publicKeyB64)
                 val stakeTx = session.stake?.let { Base64.decode(it.transaction, Base64.NO_WRAP) }
-                if (stakeTx != null) throw AttestException("STAKE_FAILED", "staked missions are not available on Monad yet")
                 wallet.authorizeSession(session.sessionId)
                 // The wallet signed in MetaMask: wait until the user is back in FACEDOWN, then start the server clock.
                 com.presence.AppForeground.resumed.first { it }

@@ -172,6 +172,7 @@ data class VerifyResult(
 
 @Singleton
 @Serializable data class WalletLink(val code: String)
+@Serializable data class FreezeStatus(val status: String)
 @Serializable data class WalletLinkStatus(val address: String? = null)
 @Serializable data class SessionSiwe(val wallet: String, val message: String, val state: String)
 
@@ -198,6 +199,7 @@ class AttestApi @Inject constructor(@PublishedApi internal val http: HttpClient)
     suspend fun walletLink(): WalletLink = post("/wallet/link", emptyMap())
     suspend fun walletLinkStatus(code: String): WalletLinkStatus = get("/wallet/link/$code")
     suspend fun sessionSiwe(sessionId: String): SessionSiwe = get("/session/$sessionId/siwe")
+    suspend fun freezeStatus(orderId: String): FreezeStatus = get("/streak/freeze/$orderId")
     suspend fun beginSession(sessionId: String) { call { http.post("$base/session/$sessionId/begin") } }
     fun metamaskLink(query: String): String =
         "metamask://dapp/" + base.removePrefix("https://") + "/metamask?" + query

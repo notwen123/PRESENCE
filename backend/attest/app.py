@@ -1,5 +1,6 @@
 """HTTP surface of the ATTEST engine. Routes only translate HTTP <-> service calls."""
 
+import json
 import os
 import logging
 from pathlib import Path
@@ -79,13 +80,22 @@ def build_service(s: Settings) -> Attest:
                                reward_mint=s.reward_mint, reward_decimals=s.reward_decimals)
                 if s.program_id and s.attestor_keypair else UnconfiguredAttestor())
     monad = None
-    if os.environ.get("MONAD_REGISTRY") and os.environ.get("MONAD_ATTESTOR_KEY"):
+    if os.environ.get("MONAD_VAULT") and os.environ.get("MONAD_REGISTRY") and os.environ.get("MONAD_ATTESTOR_KEY"):
+        # Everything on Monad: stakes, rewards, refunds and burns in MON through PresenceVault; records in the registry.
+        from .monad import TESTNET_RPC
+        from .monad_vault import MonadVault
+        attestor = MonadVault(os.environ["MONAD_VAULT"], os.environ["MONAD_REGISTRY"], os.environ["MONAD_ATTESTOR_KEY"],
+                              os.environ.get("MONAD_RPC_URL", TESTNET_RPC))
+    elif os.environ.get("MONAD_REGISTRY") and os.environ.get("MONAD_ATTESTOR_KEY"):
         from .monad import TESTNET_RPC, MonadAnchor
         monad = MonadAnchor(os.environ["MONAD_REGISTRY"], os.environ["MONAD_ATTESTOR_KEY"],
                             os.environ.get("MONAD_RPC_URL", TESTNET_RPC))
-    return Attest(store.connect(s.db_path), load_missions(s.missions_path), sgt, attestor,
-                  domain=s.domain, chain_id=s.chain_id, dev_mode=s.dev_mode, network=s.network,
-                  ttl_seconds=s.session_ttl_seconds, enforce_physical=s.enforce_physical, monad=monad)
+    svc = Attest(store.connect(s.db_path), load_missions(s.missions_path), sgt, attestor,
+                 domain=s.domain, chain_id=s.chain_id, dev_mode=s.dev_mode, network=s.network,
+                 ttl_seconds=s.session_ttl_seconds, enforce_physical=s.enforce_physical, monad=monad)
+    if os.environ.get("FREEZE_PRICE"):
+        svc.FREEZE_PRICE = float(os.environ["FREEZE_PRICE"])
+    return svc
 
 
 class LinkBody(BaseModel):
@@ -104,7 +114,7 @@ def create_app(service: Attest | None = None) -> FastAPI:
 
     @app.get("/health")
     def health():
-        monad_only = svc.monad and isinstance(svc.attestor, UnconfiguredAttestor)
+        monad_only = (svc.monad and isinstance(svc.attestor, UnconfiguredAttestor)) or getattr(svc.attestor, "network", "").startswith("monad")
         return {"ok": True, "mode": "development" if svc.dev_mode else "production",
                 "network": "monad testnet" if monad_only else svc.network, "settlement": type(svc.attestor).__name__,
                 "physical": "enforced" if svc.enforce_physical else "reported",
@@ -156,7 +166,20 @@ def create_app(service: Attest | None = None) -> FastAPI:
     @app.get("/session/{session_id}/siwe")
     def session_siwe(session_id: str):
         row = svc._session(session_id)
-        return {"wallet": row["wallet"], "message": row["siws_message"], "state": row["state"]}
+        stake = svc.db.execute("SELECT unsigned_tx FROM stakes WHERE session_id=?", (session_id,)).fetchone()
+        tx = None
+        if stake:
+            try: tx = json.loads(bytes(stake["unsigned_tx"]))
+            except ValueError: tx = None  # a Solana stake: not for MetaMask
+        return {"wallet": row["wallet"], "message": row["siws_message"], "state": row["state"], "stake": tx}
+
+    @app.get("/streak/freeze/{order_id}")
+    def freeze_status(order_id: str):
+        row = svc.db.execute("SELECT * FROM freeze_orders WHERE id=?", (order_id,)).fetchone()
+        if row is None: raise AttestError(Reason.SESSION_NOT_FOUND, "no such freeze order")
+        try: tx = json.loads(bytes(row["unsigned_tx"]))
+        except ValueError: tx = None
+        return {"status": row["status"], "wallet": row["wallet"], "tx": tx}
 
     @app.post("/session/{session_id}/begin")
     def begin(session_id: str):

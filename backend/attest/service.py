@@ -45,7 +45,7 @@ class Attest:
         self.monad = monad  # optional MonadAnchor: also record each verified session in PresenceRegistry on Monad
         # Max sponsor reward + bonus one device (SGT, or wallet in dev mode) can earn per UTC day, in base units.
         # Farming a device only pays if cap x days > device cost, so a low cap makes farms uneconomic.
-        self.daily_reward_cap = int(os.environ.get("DAILY_REWARD_CAP_PER_DEVICE", "3000000"))  # 3 tokens at 6 decimals
+        self.daily_reward_cap = float(os.environ.get("DAILY_REWARD_CAP_PER_DEVICE", "3"))  # in whole tokens (3 SKR, or e.g. 0.1 MON)
         # Emulators have no real motion, so development only reports physical problems unless told otherwise.
         self.enforce_physical = (not dev_mode) if enforce_physical is None else enforce_physical
         # ponytail: one lock serializes every state transition; per-session locks if throughput matters.
@@ -346,7 +346,8 @@ class Attest:
             # Finishers earn a bonus on their stake, paid from the pool that quitters' stakes feed.
             stake_base = self._held_stake(session_id)
             bonus = min(round(stake_base * policy.bonus_rate), max(pool - reserved, 0))
-            cap_left = max(self.daily_reward_cap - self._rewarded_today(self._identity_key(row), day), 0)
+            cap_base = round(self.daily_reward_cap * 10 ** self._decimals())
+            cap_left = max(cap_base - self._rewarded_today(self._identity_key(row), day), 0)
             capped = reserved + bonus > cap_left
             reserved = min(reserved, cap_left)
             bonus = min(bonus, cap_left - reserved)
@@ -424,6 +425,8 @@ class Attest:
                       "reward_mint": result.reward_mint}
         if result.signature and result.network in EXPLORER:
             settlement["explorer_url"] = f"https://explorer.solana.com/tx/{result.signature}{EXPLORER[result.network]}"
+        elif result.signature and (result.network or "").startswith("monad"):
+            settlement["explorer_url"] = f"https://testnet.monadvision.com/tx/{result.signature}"
         receipt["settlement"] = settlement
         if self.monad and receipt.get("monad", {}).get("status") != "CONFIRMED":
             try:
@@ -449,6 +452,8 @@ class Attest:
 
     def symbol(self, policy: MissionPolicy) -> str:
         """Off mainnet the reward mint is a test token; never let a receipt call it SKR."""
+        if getattr(self.attestor, "network", "").startswith("monad"):
+            return "MON"  # Monad testnet MON
         return policy.reward_symbol if self.network == "mainnet" else f"{policy.reward_symbol}-TEST"
 
     def _decimals(self) -> int:
@@ -532,6 +537,8 @@ class Attest:
         with self.lock, self.db:
             self.db.execute("INSERT OR IGNORE INTO faucet_grants VALUES (?,?,?)", (wallet, sig, self.clock()))
         event("faucet", None)
+        if getattr(self.attestor, "network", "").startswith("monad"):
+            return {"granted": True, "signature": sig, "mon": 0.1}
         return {"granted": True, "signature": sig, "sol": 0.01, "tokens": 50}
 
     # ---------- reads ----------

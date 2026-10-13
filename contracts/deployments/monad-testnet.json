@@ -21,5 +21,10 @@
     "agentWithdrawBlocked": "0xe257dd0baf4eacc1ea37ef191e27f8a75d3f4d548d23e83275977d06961970dc",
     "presenceRecorded": "0xa0466d10fb58ae4c9fcfbc52360f234bf0b99c49fde663b2e31991fa85348e52",
     "agentWithdrawAllowed": "0x1d1befe4e297cfef6b0924e3be01f7ac998f0f33dd6117929f53a4868d873bf4"
+  },
+  "PresenceVault": {
+    "address": "0xfC157D4b8D9573413a3A793056D7625eD972163B",
+    "deployTx": "0x5af48ab22b388e8f4b452258843fcf562b1240002d299be07b8f59e7f75c343f",
+    "attestor": "0x5aB3036C7d0bA7043E0BB531374dC6c732eC4954"
   }
 }

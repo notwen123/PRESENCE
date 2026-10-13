@@ -23,6 +23,27 @@ async function run() {
     if (!(await ready())) { B.style.display = "inline-block"; return say("Open in MetaMask", "This page must be opened inside the MetaMask app browser.", "err"); }
     const [account] = await ethereum.request({ method: "eth_requestAccounts" });
     let message, post;
+    const monad = async () => {
+      try { await ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x279f" }] }); }
+      catch (e) {
+        await ethereum.request({ method: "wallet_addEthereumChain", params: [{ chainId: "0x279f", chainName: "Monad Testnet",
+          nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 }, rpcUrls: ["https://testnet-rpc.monad.xyz"],
+          blockExplorerUrls: ["https://testnet.monadvision.com"] }] });
+      }
+    };
+    const send = async (tx) => { await monad(); return ethereum.request({ method: "eth_sendTransaction",
+      params: [{ from: account, to: tx.to, data: tx.data, value: tx.value }] }); };
+    if (q.get("freeze")) {
+      const o = await (await fetch("/streak/freeze/" + q.get("freeze"))).json();
+      if (o.wallet.toLowerCase() !== account.toLowerCase()) return say("Wrong account", "Switch MetaMask to " + o.wallet, "err");
+      say("Confirm in MetaMask", "Pay for one streak freeze (half is burned on Monad).");
+      const hash = await send(o.tx);
+      say("Confirming on Monad…", hash.slice(0, 18) + "…");
+      const r = await fetch("/streak/freeze/" + q.get("freeze"), { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ signature: "-", stake_transaction: btoa(hash) }) });
+      if (!r.ok) throw new Error((await r.json()).detail || r.status);
+      return say("Done ✓", "Freeze bought. Tap the FACEDOWN notification (or switch back to FACEDOWN).", "ok");
+    }
     if (q.get("code")) {
       message = "Link MetaMask to FACEDOWN\ncode: " + q.get("code");
       post = (signature) => fetch("/wallet/link/" + q.get("code"), { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ address: account, signature }) });
@@ -30,7 +51,17 @@ async function run() {
       const s = await (await fetch("/session/" + q.get("session") + "/siwe")).json();
       if (s.wallet.toLowerCase() !== account.toLowerCase()) return say("Wrong account", "Switch MetaMask to " + s.wallet, "err");
       message = s.message;
-      post = (signature) => fetch("/session/" + q.get("session") + "/authorize", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ signature }) });
+      post = async (signature) => {
+        let stake_transaction;
+        if (s.stake) {
+          say("Confirm the stake", "Lock " + (parseInt(s.stake.value, 16) / 1e18) + " MON in the FACEDOWN vault on Monad.");
+          const hash = await send(s.stake);
+          stake_transaction = btoa(hash);
+          say("Confirming on Monad…", hash.slice(0, 18) + "…");
+        }
+        return fetch("/session/" + q.get("session") + "/authorize", { method: "POST", headers: { "content-type": "application/json" },
+          body: JSON.stringify(stake_transaction ? { signature, stake_transaction } : { signature }) });
+      };
     }
     say("Sign in MetaMask", "Approve the signature request to continue.");
     const signature = await ethereum.request({ method: "personal_sign", params: [message, account] });

@@ -1,0 +1,295 @@
+[
+  {
+    "mission_id": "quick-free",
+    "name": "Quick Facedown",
+    "description": "Two minutes, phone down, no stake. Finish and a sponsor pays a small reward.",
+    "steps": [
+      "Start; your wallet signs in once (no stake)",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (4 checks, one in every 30 s)",
+      "Switching apps or missing a check ends the session unverified"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 120,
+    "required_checkpoints": 4,
+    "checkpoint_interval_seconds": 30,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 1,
+    "reward": {
+      "xp": 60,
+      "token": 0.005,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0,
+      "bonus_rate": 0
+    },
+    "sponsor": "Sponsor pool",
+    "why": "Most people won't put money at risk on day one (13.7% accepted deposits vs 90% rewards in Halpern et al., NEJM 2015). Free sessions let anyone start; staking is the upgrade.",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "urge-break",
+    "name": "Urge Break",
+    "description": "Ten minutes face-down instead of the app you were about to open. A sponsor pays a small reward.",
+    "steps": [
+      "Start; your wallet signs in once (no stake)",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (2 checks, one in every 5 minutes)",
+      "Switching apps or missing a check ends the session unverified"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 600,
+    "required_checkpoints": 2,
+    "checkpoint_interval_seconds": 300,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 3,
+    "reward": {
+      "xp": 100,
+      "token": 0.01,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0,
+      "bonus_rate": 0
+    },
+    "sponsor": "Sponsor pool",
+    "why": "Turns the urge itself into a verified session.",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "quick-noloss",
+    "name": "Quick Facedown",
+    "description": "Lock 1 SKR for the session; you get it back whether you finish or not. Finish and a sponsor pays a reward and your streak grows.",
+    "steps": [
+      "Stake and start; your wallet signs once",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (4 checks, one in every 30 s)",
+      "Switching apps or missing a check ends the session: stake returned, no reward"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 120,
+    "required_checkpoints": 4,
+    "checkpoint_interval_seconds": 30,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 3,
+    "reward": {
+      "xp": 60,
+      "token": 0.005,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0.05,
+      "bonus_rate": 0,
+      "no_loss": true
+    },
+    "sponsor": "Sponsor pool",
+    "why": "Nobody loses principal, so it isn't a bet: finishing earns the sponsor reward and keeps the streak. On mainnet the locked stake can earn yield that funds the reward (roadmap).",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "quick-clock-in",
+    "name": "Quick Facedown",
+    "description": "Two minutes, phone down, one thing in mind. Stake 1 SKR: finish and get it back plus a bonus from the pool. Quit and your stake is locked for a week, not lost.",
+    "steps": [
+      "Stake and start; your wallet signs once",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (4 checks, one in every 30 s)",
+      "Switching apps or missing two checks locks the stake for 7 days (14, then 30 if you quit again within a month), then it comes back"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 120,
+    "required_checkpoints": 4,
+    "checkpoint_interval_seconds": 30,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 3,
+    "reward": {
+      "xp": 60,
+      "token": 0,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0.05,
+      "bonus_rate": 0.2,
+      "cooldown": true
+    },
+    "sponsor": "",
+    "why": "Focus apps run on a local timer, so nobody can put money on them. PRESENCE times the session on the server, ties it to one Seeker, and checks for a human at unpredictable moments, so a stake can ride on it.",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "deep-free-25",
+    "name": "Deep Focus 25",
+    "description": "25 minutes, phone down, no stake. Finish and a sponsor pays a reward.",
+    "steps": [
+      "Start; your wallet signs in once (no stake)",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (5 checks, one in every 5 minutes)",
+      "Switching apps or missing a check ends the session unverified"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 1500,
+    "required_checkpoints": 5,
+    "checkpoint_interval_seconds": 300,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 1,
+    "reward": {
+      "xp": 300,
+      "token": 0.02,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0,
+      "bonus_rate": 0
+    },
+    "sponsor": "Sponsor pool",
+    "why": "Most people won't put money at risk on day one (13.7% accepted deposits vs 90% rewards in Halpern et al., NEJM 2015). Free sessions let anyone start; staking is the upgrade.",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "deep-focus-25",
+    "name": "Deep Focus 25",
+    "description": "One 25-minute deep-work block a day, phone down. Stake 5 SKR; finish for your stake plus a 20% bonus from the pool.",
+    "steps": [
+      "Stake and start; your wallet signs once",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (5 checks, one in every 5 minutes)",
+      "Switching apps or missing two checks locks the stake for 7 days (14, then 30 if you quit again within a month), then it comes back"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 1500,
+    "required_checkpoints": 5,
+    "checkpoint_interval_seconds": 300,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 1,
+    "reward": {
+      "xp": 300,
+      "token": 0,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0.2,
+      "bonus_rate": 0.2,
+      "cooldown": true
+    },
+    "sponsor": "",
+    "why": "A daily appointment with your own attention, with skin in the game, provable on-chain.",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "facedown-hour-free",
+    "name": "Facedown Hour",
+    "description": "One hour, phone face-down, no stake. Finish and a sponsor pays a reward.",
+    "steps": [
+      "Start; your wallet signs in once (no stake)",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (4 checks, one in every 15 minutes)",
+      "Switching apps or missing a check ends the session unverified"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 3600,
+    "required_checkpoints": 4,
+    "checkpoint_interval_seconds": 900,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 1,
+    "reward": {
+      "xp": 600,
+      "token": 0.05,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0,
+      "bonus_rate": 0
+    },
+    "sponsor": "Sponsor pool",
+    "why": "Most people won't put money at risk on day one (13.7% accepted deposits vs 90% rewards in Halpern et al., NEJM 2015). Free sessions let anyone start; staking is the upgrade.",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "facedown-hour-noloss",
+    "name": "Facedown Hour",
+    "description": "Lock 5 SKR for the session; you get it back whether you finish or not. Finish and a sponsor pays a reward and your streak grows.",
+    "steps": [
+      "Stake and start; your wallet signs once",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (4 checks, one in every 15 minutes)",
+      "Switching apps or missing a check ends the session: stake returned, no reward"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 3600,
+    "required_checkpoints": 4,
+    "checkpoint_interval_seconds": 900,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 1,
+    "reward": {
+      "xp": 600,
+      "token": 0.05,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0.2,
+      "bonus_rate": 0,
+      "no_loss": true
+    },
+    "sponsor": "Sponsor pool",
+    "why": "Nobody loses principal, so it isn't a bet: finishing earns the sponsor reward and keeps the streak. On mainnet the locked stake can earn yield that funds the reward (roadmap).",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  },
+  {
+    "mission_id": "facedown-hour",
+    "name": "Facedown Hour",
+    "description": "One hour, phone face-down: the evening or the first hour awake. Stake 5 SKR; finish for your stake plus up to 20% from the pool.",
+    "steps": [
+      "Stake and start; your wallet signs once",
+      "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
+      "When it buzzes, knock on the back (4 checks, one in every 15 minutes)",
+      "Switching apps or missing two checks locks the stake for 7 days (14, then 30 if you quit again within a month), then it comes back"
+    ],
+    "required_assurance": "P2",
+    "duration_seconds": 3600,
+    "required_checkpoints": 4,
+    "checkpoint_interval_seconds": 900,
+    "min_interactions_per_checkpoint": 1,
+    "witness_required": false,
+    "max_claims_per_identity_per_day": 1,
+    "reward": {
+      "xp": 600,
+      "token": 0,
+      "symbol": "MON"
+    },
+    "stake": {
+      "token": 0.2,
+      "bonus_rate": 0.2,
+      "cooldown": true
+    },
+    "sponsor": "",
+    "why": "The research benefit is long stretches away from the phone (Castelo et al., PNAS Nexus 2025), not two-minute timers.",
+    "min_still_pct": 60,
+    "min_touch_motion": 150,
+    "allowed_misses": 1
+  }
+]
