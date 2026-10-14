@@ -50,7 +50,7 @@ const hex = (b) => "0x" + [...new Uint8Array(b)].map(x => x.toString(16).padStar
 const unhex = (h) => new Uint8Array(h.slice(2).match(/../g).map(x => parseInt(x, 16)));
 const post = async (p, body) => { const r = await fetch(p, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const j = await r.json(); if (!r.ok) throw new Error(j.detail || j.error || r.status); return j; };
-let cfg, keys, account, current;
+let cfg, keys, account, current, listening;  // listening: the one active devicemotion handler
 const ex = (tx, label) => `<a target="_blank" href="${cfg.explorer}${tx}">${label || tx.slice(0, 14) + "…"}</a>`;
 
 // key storage: IndexedDB keeps the non-extractable private key on this device
@@ -122,14 +122,16 @@ $("start").onclick = async () => {
     $("sense").textContent = down ? `Face-down ${(down / 1000).toFixed(1)}s · knocks ${knocks}` : "Waiting for the phone to be face-down…";
     if (down > 800 && lin > 1.2 && now - lastKnock > 250) {
       knocks++; lastKnock = now; peak = Math.max(peak, lin); navigator.vibrate?.(80);
-      if (knocks >= 2) { done = true; window.removeEventListener("devicemotion", onMotion); approve(Math.round(down), peak, knocks); }
+      if (knocks >= 2) { done = true; window.removeEventListener("devicemotion", onMotion); listening = null; approve(Math.round(down), peak, knocks); }
     }
   };
-  window.addEventListener("devicemotion", onMotion);
+  if (listening) window.removeEventListener("devicemotion", listening);  // one knock = one approval
+  listening = onMotion; window.addEventListener("devicemotion", onMotion);
   setTimeout(() => { if (!got) $("sense").innerHTML = '<span class="err">No motion sensor here. Open this page on a phone.</span>'; }, 2500);
 };
 
 async function approve(faceDownMs, peak, knocks) {
+  if (!current) return;
   $("out3").textContent = "Knock felt. Signing the exact transaction and sending it to Monad…";
   try {
     const sig = new Uint8Array(await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, keys.privateKey, unhex(current.intent_id)));
