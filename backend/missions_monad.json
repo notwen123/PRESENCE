@@ -66,7 +66,7 @@
   {
     "mission_id": "quick-noloss",
     "name": "Quick Facedown",
-    "description": "Lock 1 SKR for the session; you get it back whether you finish or not. Finish and a sponsor pays a reward and your streak grows.",
+    "description": "Lock 0.05 MON for the session; you get it back whether you finish or not. Finish and a sponsor pays a reward and your streak grows.",
     "steps": [
       "Stake and start; your wallet signs once",
       "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
@@ -99,7 +99,7 @@
   {
     "mission_id": "quick-clock-in",
     "name": "Quick Facedown",
-    "description": "Two minutes, phone down, one thing in mind. Stake 1 SKR: finish and get it back plus a bonus from the pool. Quit and your stake is locked for a week, not lost.",
+    "description": "Two minutes, phone down, one thing in mind. Stake 0.05 MON: finish and get it back plus a bonus from the pool. Quit and your stake is locked for a week, not lost.",
     "steps": [
       "Stake and start; your wallet signs once",
       "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
@@ -124,7 +124,7 @@
       "cooldown": true
     },
     "sponsor": "",
-    "why": "Focus apps run on a local timer, so nobody can put money on them. PRESENCE times the session on the server, ties it to one Seeker, and checks for a human at unpredictable moments, so a stake can ride on it.",
+    "why": "Focus apps run on a local timer, so nobody can put money on them. PRESENCE times the session on the server, ties it to one device, and checks for a human at unpredictable moments, so a stake can ride on it.",
     "min_still_pct": 60,
     "min_touch_motion": 150,
     "allowed_misses": 1
@@ -164,7 +164,7 @@
   {
     "mission_id": "deep-focus-25",
     "name": "Deep Focus 25",
-    "description": "One 25-minute deep-work block a day, phone down. Stake 5 SKR; finish for your stake plus a 20% bonus from the pool.",
+    "description": "One 25-minute deep-work block a day, phone down. Stake 0.2 MON; finish for your stake plus a 20% bonus from the pool.",
     "steps": [
       "Stake and start; your wallet signs once",
       "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
@@ -229,7 +229,7 @@
   {
     "mission_id": "facedown-hour-noloss",
     "name": "Facedown Hour",
-    "description": "Lock 5 SKR for the session; you get it back whether you finish or not. Finish and a sponsor pays a reward and your streak grows.",
+    "description": "Lock 0.2 MON for the session; you get it back whether you finish or not. Finish and a sponsor pays a reward and your streak grows.",
     "steps": [
       "Stake and start; your wallet signs once",
       "Lay the phone face-down with FACEDOWN open (the screen goes dark)",
@@ -262,7 +262,7 @@
   {
     "mission_id": "facedown-hour",
     "name": "Facedown Hour",
-    "description": "One hour, phone face-down: the evening or the first hour awake. Stake 5 SKR; finish for your stake plus up to 20% from the pool.",
+    "description": "One hour, phone face-down: the evening or the first hour awake. Stake 0.2 MON; finish for your stake plus up to 20% from the pool.",
     "steps": [
       "Stake and start; your wallet signs once",
       "Lay the phone face-down with FACEDOWN open (the screen goes dark)",

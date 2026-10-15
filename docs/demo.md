@@ -1,22 +1,37 @@
 # Demo script (about 3 minutes, on a real phone held by a person)
 
-Setup: the devnet ATTEST server (`.devnet/attest.env` + `ATTEST_DEV_MODE=true`), the phone on USB with
-`adb reverse tcp:8787 tcp:8787`, the app built with `-Ppresence.backendUrl=http://127.0.0.1:8787`, and a wallet
-(Solflare on devnet, backed up, or Solana Mobile's test wallet). Film the phone and a table.
+Setup: the live ATTEST server at `https://presence-h7uy.onrender.com` (development mode, Monad testnet; it is on a
+free plan, so open `/health` a minute before filming to wake it). The FACEDOWN APK built with
+`-Ppresence.backendUrl=https://presence-h7uy.onrender.com -Ppresence.privyAppId=… -Ppresence.privyClientId=…`
+(public Privy IDs; without them the app falls back to MetaMask). A Google account on the phone. A second tab open on
+`https://testnet.monadvision.com`. Film the phone and a table.
 
 | # | Show | Say |
 |---|---|---|
-| 1 | Today: *Put it down. Prove it.*, 2 / 25 / 60 min, Free / No-Loss / Stake | "Seeker is the only phone that can prove you were present. FACEDOWN turns phone-free time into something you can commit to and get paid for." |
-| 2 | Pick 2 min + No-Loss → confirm screen | "No-Loss: you lock SKR and get it back either way. Finish and a sponsor pays you. Nobody loses principal." |
-| 3 | Wallet: approve sign-in and the lock | "One wallet session signs the sign-in and the stake. The server only submits the stake it issued." |
-| 4 | Countdown → **turn the phone face-down on the table**: the screen goes black | "No lit screen, no pickup. The accelerometer proves it's face-down and still." |
-| 5 | It buzzes → **knock on the back** (show your hand) | "A knock answers the check-in. A script or an AI agent can tap a screen; it can't knock on a table." |
-| 6 | Pick up after the session → receipt: human touch + phone-down verified, recorded on Solana, QR | "Attestation and payout are one Solana transaction. Scan it." |
-| 7 | Progress → *Buy a streak freeze* → toast "1 SKR-TEST burned" | "Streak freezes cost SKR and half is burned on-chain: a real SKR sink." |
-| 8 | Second run with Stake: leave the app → *stake went to the pool* | "Stake mode is for the committed: quit and it funds everyone who finished." |
+| 1 | Today: *Put it down. Prove it.*, 2 / 10 / 25 / 60 min, Free / No-Loss / Stake | "AI agents can tap screens now. PRESENCE proves a real person physically did something on a real phone, and records it on Monad. FACEDOWN is the first app on it." |
+| 2 | *Continue with Google* → Privy sign-in → wallet chip shows the new address | "Google sign-in through Privy creates an embedded wallet on Monad. No seed phrase, no other app. In development the server sends it 0.1 testnet MON for gas." |
+| 3 | Pick 2 min + **No-Loss** → confirm screen shows 0.05 MON | "No-Loss: I lock 0.05 MON and get it back either way. Finish, and a sponsor pays 0.005 MON." |
+| 4 | Approve: the embedded wallet signs the sign-in and the stake in-app | "The wallet signs the sign-in message and the stake transaction right here; the app sends the stake to PresenceVault on Monad, and the server checks it moved exactly 0.05 MON." |
+| 5 | Countdown → **turn the phone face-down on the table**: the screen goes black | "No lit screen, no pickup. The accelerometer reports that it's face-down and still. The server times the session on its own clock." |
+| 6 | It buzzes → **knock on the back** (show your hand); repeat for each check-in | "A knock answers the check-in. A script or an AI agent can tap a screen; it can't knock on a table." |
+| 7 | Pick up after the session → receipt: human touch + phone-down verified, stake back + 0.005 MON | "The server re-checked every hash and every rule." |
+| 8 | Tap the receipt's Monad link → the `record` transaction on MonadVision | "One transaction in PresenceRegistry. Any contract can now ask `isPresent()` for this identity. Only hashes go on-chain." |
+| 9 | Open `https://presence-h7uy.onrender.com/agent` in Chrome on the phone → *Set up this phone* | "Now the agent side. The browser makes a P-256 key that never leaves the phone and binds it to AgentGuard." |
+| 10 | *Agent sends 0.005 MON* → sent | "The agent is a Privy server wallet. Under 0.01 MON it spends alone." |
+| 11 | *Agent sends 0.03 MON* → *Knock to approve*, 120 s countdown | "Over the limit: held on-chain, waiting for me." |
+| 12 | Tap *Start*, phone face-down, **two knocks** → approved, sent, presence recorded | "The phone signed this exact transfer. AgentGuard checked the signature itself through Monad's P-256 precompile. The server can't forge it, and Privy's policy won't let the agent sign a transfer to anywhere else." |
 
-Say plainly on camera: development mode (this phone isn't a Seeker, so Seeker eligibility is bypassed and labeled);
-SKR-TEST is a valueless test mint; the mainnet switch is pointing `REWARD_MINT` at SKR.
+Say plainly on camera: this is Monad testnet and MON here has no value; the server runs in development mode (the device
+check is bypassed and labelled, and the physical rules are reported rather than enforced); one server is the only
+attestor today; and the web-browser knock is weaker evidence than the app, so it is recorded at assurance 1.
 
-Automated version (emulator: `adb emu sensor set acceleration 0:0:-9.81` is face-down):
-`python3 scripts/device_e2e.py <adb-serial> happy free leave`
+Optional extra: Progress → *Buy a streak freeze* → toast "Streak freeze added. 0.01 MON burned on Monad." (price
+0.02 MON, half burned).
+
+Reference transactions from a real run are in `contracts/deployments/monad-testnet.json` and the README.
+
+Automated versions, against any running ATTEST:
+`uv run --project backend python scripts/monad_demo.py session https://presence-h7uy.onrender.com device.key` (a
+simulated client session, recorded on Monad) and `ATTEST_URL=https://presence-h7uy.onrender.com python
+backend/scripts/knock_e2e.py` (Knock to Approve, including a forged signature that reverts). Both spend a little
+testnet MON from the server's wallets.

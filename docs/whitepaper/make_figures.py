@@ -1,4 +1,5 @@
-"""Figures and measurements for the PRESENCE whitepaper. Every number comes from the code or the devnet database.
+"""Figures and measurements for the PRESENCE whitepaper. Every number comes from the code or the
+database of the earlier devnet prototype (9-12 Oct 2026); the economics models use the Monad missions' MON stakes.
 
     uv run --with matplotlib --with numpy python docs/whitepaper/make_figures.py
 
@@ -131,10 +132,10 @@ save(f, "cooldown")
 
 # ------------------------------------------------------------------ Fig: bonus vs pool + streak survival (models)
 f, (a1, a2) = plt.subplots(1, 2, figsize=(7.0, 2.15))
-pool = np.linspace(0, 1.5, 301)
-for st, c in ((1.0, GREEN), (5.0, INK)):
-    a1.plot(pool, np.minimum(round(st * 0.2, 6), np.maximum(pool, 0)), color=c, lw=1.4, label=f"stake {st:g} SKR, $\\beta$=0.2")
-a1.set_xlabel("pool remaining $P-R$ (SKR)"); a1.set_ylabel("bonus paid (SKR)"); a1.legend(fontsize=6.5)
+pool = np.linspace(0, 0.06, 301)  # Monad missions stake 0.05 or 0.2 MON at beta = 0.2
+for st, c in ((0.05, GREEN), (0.2, INK)):
+    a1.plot(pool, np.minimum(round(st * 0.2, 6), np.maximum(pool, 0)), color=c, lw=1.4, label=f"stake {st:g} MON, $\\beta$=0.2")
+a1.set_xlabel("pool remaining $P-R$ (MON)"); a1.set_ylabel("bonus paid (MON)"); a1.legend(fontsize=6.5)
 days = np.arange(0, 61)
 def survive(q, freezes, n=1):
     qd = q ** n  # a squad day counts only if every member verified
